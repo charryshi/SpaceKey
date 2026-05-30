@@ -1,0 +1,28 @@
+services:
+  permission-gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    env_file:
+      - ../.env
+    ports:
+      - "8080:8080"
+    volumes:
+      - gateway-data:/app/data
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: permission_gateway
+      POSTGRES_USER: permission_gateway
+      POSTGRES_PASSWORD: permission_gateway
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+
+volumes:
+  gateway-data:
+  postgres-data:
+
