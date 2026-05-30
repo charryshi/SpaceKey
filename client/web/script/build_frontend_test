@@ -1,0 +1,14 @@
+#!/bin/sh
+# Builds the frontend for test deployments.
+# This keeps production mode bundling but skips source maps and precompression.
+
+# Stop on errors
+set -e
+
+cd "$(dirname "$0")/.."
+
+: "${SKIP_FETCH_NIGHTLY_TRANSLATIONS:=1}"
+export IS_TEST=1
+export SKIP_FETCH_NIGHTLY_TRANSLATIONS
+
+./node_modules/.bin/gulp build-app

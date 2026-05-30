@@ -62,6 +62,15 @@ cd client/web
 SKIP_FETCH_NIGHTLY_TRANSLATIONS=1 ./script/build_frontend
 ```
 
+测试发布快速构建：
+
+```bash
+cd client/web
+./script/build_frontend_test
+```
+
+`build_frontend_test` 仍使用 production mode 打包，但会设置 `IS_TEST=1`，跳过 source map 和预压缩文件生成，适合测试环境发布。正式生产发布仍应使用 `script/build_frontend`。
+
 本目录下的 `deploy/permission_web_server.py` 和 `deploy/install_permission_web_service.sh` 是 Web 静态服务部署脚本，只服务 Web 前端并反代到网关；它不是权限网关实现。
 
 ## English
@@ -125,6 +134,15 @@ Production build:
 cd client/web
 SKIP_FETCH_NIGHTLY_TRANSLATIONS=1 ./script/build_frontend
 ```
+
+Fast test-deployment build:
+
+```bash
+cd client/web
+./script/build_frontend_test
+```
+
+`build_frontend_test` still bundles in production mode, but sets `IS_TEST=1` to skip source maps and precompressed assets. Use it for test deployments. Use `script/build_frontend` for final production releases.
 
 The files under `deploy/` provide a lightweight Web static server and reverse-proxy setup for this frontend. They are not the Permission Gateway implementation.
 
