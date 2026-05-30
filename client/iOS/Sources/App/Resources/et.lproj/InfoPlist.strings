@@ -1,0 +1,17 @@
+"NFCReaderUsageDescription" = "NFC-märgiste lugemine ja kirjutamine võimaldab käivitada sündmusi.";
+"NSCameraUsageDescription" = "Tee fotosid ja saada need Home Assistant serverisse.";
+"NSCrossWebsiteTrackingUsageDescription" = "Luba veebisaidiülene jälgimine kui konfiguratsioon seda nõuab.";
+"NSFocusStatusUsageDescription" = "Teata oma fookuse olekust andurina.";
+"NSLocalNetworkUsageDescription" = "Leia Home Assistanti eksemplar ja suhtle sellega.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "\n 🔵 Samuti vajame luba asukohale juurde pääseda valikuga „Alati”, et rakendus saaks taustal toiminguid teha. \n\n ⚠️ Ilma selleta ei saa rakendus otsustada, millist ühendust (kohalik või kaugühendus) taustal kasutada ja kasutab alati kaugühendust.";
+"NSLocationAlwaysUsageDescription" = "Meil on alati vaja juurdepääsu asukohale, et kasutada selliseid funktsioone nagu iBeacons, geofüüsilised piirded, asukoha taustauuendused ja täpne aruandlus.";
+"NSLocationUsageDescription" = "Kui see on aktiveeritud, saadetakse  seadme asukoht jälgimisseadmena Home Assistant'i serverisse.";
+"NSLocationWhenInUseUsageDescription" = "See rakendus vajab Home Assistant installiga otseühenduse loomiseks asukohale juurdepääsu. \n \n 1️⃣ Asukohta kasutatakse ainult selleks, et kontrollida, kas oled ühendatud oma kohaliku võrguga. \n \n 2️⃣ Seda ei jagata kellegagi. \n \n 3️⃣ Kui seda ei luba, loob rakendus alati ühenduse interneti kaudu. Kui see pole konfigureeritud, kaitseb see andmeid ja keeldub ühendusest.";
+"NSMicrophoneUsageDescription" = "Salvesta heli Home Assistanti kasutajaliidese abil.";
+"NSMotionUsageDescription" = "Liikumist kasutatakse asukoha ajakohastamise parandamiseks koos praeguse liikumistüübiga ning samuti põhiliste sammuloendurite andmete esitamiseks.";
+"NSPhotoLibraryAddUsageDescription" = "Fotode veebivaatest salvestamiseks on vaja juurdepääsu fotokogule.";
+"NSPhotoLibraryUsageDescription" = "Fotode veebivaatest salvestamiseks on vaja juurdepääsu fotokogule.";
+"NSSiriUsageDescription" = "Kasutame Sirit, et lubada loodud otseteedel rakendusega suhelda.";
+"NSSpeechRecognitionUsageDescription" = "Kasutatakse teksti dikteerimiseks Assistile.";
+"SEND_LOCATION_APP_SHORTCUT_TITLE" = "Saada asukoht";
+"TemporaryFullAccuracyReasonManualUpdate" = "Taga seadme jälgija jaoks oma praeguse asukoha kasutamiseks täielik täpsus.";

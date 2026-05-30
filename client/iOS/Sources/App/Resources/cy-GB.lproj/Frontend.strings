@@ -1,0 +1,14 @@
+"panel::calendar" = "Calendr";
+"panel::config" = "Gosodiadau";
+"panel::developer_tools" = "Offer datblygu";
+"panel::energy" = "Ynni";
+"panel::history" = "Hanes";
+"panel::logbook" = "Gweithgaredd";
+"panel::mailbox" = "Blwch post";
+"panel::map" = "Map";
+"panel::media_browser" = "Cyfryngau";
+"panel::profile" = "Proffil";
+"panel::shopping_list" = "Rhestr siopa";
+"panel::states" = "Trosolwg";
+"state::default::unavailable" = "Dim ar gael";
+"state::default::unknown" = "Anhysbys";

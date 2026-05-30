@@ -1,0 +1,91 @@
+import AppIntents
+import Foundation
+import SFSafeSymbols
+import Shared
+import WidgetKit
+
+@available(iOS 18, *)
+struct ControlOpenCameraItem {
+    let entity: HAAppEntityAppIntentEntity
+    let icon: SFSymbolEntity
+    let displayText: String?
+}
+
+@available(iOS 18, *)
+struct ControlOpenCameraValueProvider: AppIntentControlValueProvider {
+    func currentValue(configuration: ControlOpenCameraConfiguration) async throws -> ControlOpenCameraItem {
+        item(configuration: configuration)
+    }
+
+    func placeholder(for configuration: ControlOpenCameraConfiguration) -> ControlOpenCameraItem {
+        item(configuration: configuration)
+    }
+
+    func previewValue(configuration: ControlOpenCameraConfiguration) -> ControlOpenCameraItem {
+        item(configuration: configuration)
+    }
+
+    private func item(configuration: ControlOpenCameraConfiguration) -> ControlOpenCameraItem {
+        .init(
+            entity: configuration.entity ?? .init(
+                id: "",
+                entityId: "",
+                serverId: "",
+                serverName: "",
+                displayString: L10n.Widgets.Controls.OpenCamera.pendingConfiguration,
+                iconName: ""
+            ),
+            icon: configuration.icon ?? placeholder().icon,
+            displayText: configuration.displayText
+        )
+    }
+
+    private func placeholder() -> ControlOpenCameraItem {
+        .init(
+            entity: .init(
+                id: "",
+                entityId: "",
+                serverId: "",
+                serverName: "",
+                displayString: L10n.Widgets.Controls.OpenCamera.pendingConfiguration,
+                iconName: ""
+            ),
+            icon: .init(id: SFSymbol.video.rawValue),
+            displayText: nil
+        )
+    }
+}
+
+@available(iOS 18.0, *)
+struct ControlOpenCameraConfiguration: ControlConfigurationIntent {
+    static var title: LocalizedStringResource = .init(
+        "widgets.controls.open_camera.configuration.title",
+        defaultValue: "Open Camera"
+    )
+
+    @Parameter(
+        title: .init("widgets.controls.open_camera.configuration.parameter.entity", defaultValue: "Camera"),
+        optionsProvider: CameraEntityOptionsProvider()
+    )
+    var entity: HAAppEntityAppIntentEntity?
+
+    @Parameter(
+        title: .init("app_intents.scenes.icon.title", defaultValue: "Icon")
+    )
+    var icon: SFSymbolEntity?
+    @Parameter(
+        title: .init("app_intents.display_text.title", defaultValue: "Display Text")
+    )
+    var displayText: String?
+}
+
+@available(iOS 18.0, *)
+struct CameraEntityOptionsProvider: DynamicOptionsProvider {
+    func results() async throws -> IntentItemCollection<HAAppEntityAppIntentEntity> {
+        let entities = ControlEntityProvider(domains: [.camera]).getEntities()
+        return makeHAEntityIntentItemCollection(
+            entities: entities,
+            defaultIconName: SFSymbol.video.rawValue
+        )
+    }
+}

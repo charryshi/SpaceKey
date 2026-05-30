@@ -1,0 +1,14 @@
+"panel::calendar" = "Kalender";
+"panel::config" = "Seaded";
+"panel::developer_tools" = "Arendaja tööriistad";
+"panel::energy" = "Energia";
+"panel::history" = "Ajalugu";
+"panel::logbook" = "Tegevused";
+"panel::mailbox" = "Postkast";
+"panel::map" = "Kaart";
+"panel::media_browser" = "Meediamängija";
+"panel::profile" = "Profiil";
+"panel::shopping_list" = "Ostunimekiri";
+"panel::states" = "Ülevaade";
+"state::default::unavailable" = "Kadunud";
+"state::default::unknown" = "Teadmata";

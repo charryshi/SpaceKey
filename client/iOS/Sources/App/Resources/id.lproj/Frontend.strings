@@ -1,0 +1,14 @@
+"panel::calendar" = "Kalender";
+"panel::config" = "Pengaturan";
+"panel::developer_tools" = "Alat pengembang";
+"panel::energy" = "Energi";
+"panel::history" = "Riwayat";
+"panel::logbook" = "Aktivitas";
+"panel::mailbox" = "Kotak Pesan";
+"panel::map" = "Peta";
+"panel::media_browser" = "Media";
+"panel::profile" = "Profil";
+"panel::shopping_list" = "Daftar belanja";
+"panel::states" = "Ikhtisar";
+"state::default::unavailable" = "Tidak tersedia";
+"state::default::unknown" = "Tidak diketahui";

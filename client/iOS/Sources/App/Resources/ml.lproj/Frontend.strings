@@ -1,0 +1,14 @@
+"panel::calendar" = "നാൾകാട്ടി";
+"panel::config" = "ക്രമീകരണങ്ങൾ";
+"panel::developer_tools" = "വികസക സാമഗ്രികൾ";
+"panel::energy" = "ഊര്‍ജ്ജം";
+"panel::history" = "ചരിത്രം";
+"panel::logbook" = "നടപടികൾ";
+"panel::mailbox" = "മെയിൽബോക്സ്";
+"panel::map" = "ഭൂപടം";
+"panel::media_browser" = "മാധ്യമങ്ങൾ";
+"panel::profile" = "പ്രൊഫൈൽ";
+"panel::shopping_list" = "വാങ്ങിക്കൽ പട്ടിക";
+"panel::states" = "മേൽക്കാഴ്ച്ച";
+"state::default::unavailable" = "ലഭ്യമല്ല";
+"state::default::unknown" = "അറിയില്ല";

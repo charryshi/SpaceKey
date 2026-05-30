@@ -1,0 +1,17 @@
+"NFCReaderUsageDescription" = "Reading and writing NFC tags allows you to trigger events.";
+"NSCameraUsageDescription" = "צלם תמונות ושלח אותן לשרת הום אסיסטנט שלך.";
+"NSCrossWebsiteTrackingUsageDescription" = "לחלופין, הפעל מעקב חוצה אתרי אינטרנט אם התצורה שלך דורשת זאת.";
+"NSFocusStatusUsageDescription" = "דווח על מצב הפוקוס שלך כחיישן.";
+"NSLocalNetworkUsageDescription" = "Locate and communicate with your Home Assistant instance.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "\n 🔵  We also need permission to access location 'Always' so the App can perform background operations. \n\n ⚠️  Without that, the App is unable to decide which connection (local or remote) to use in background and will use remote always.";
+"NSLocationAlwaysUsageDescription" = "We always need access to your location for features like iBeacons, geofences, background location updates and accurate reporting.";
+"NSLocationUsageDescription" = "כאשר מופעל, מיקום המכשיר שלך נשלח לשרת הום אסיסטנט שלך כמעקב אחר מכשירים.";
+"NSLocationWhenInUseUsageDescription" = "This app needs location access to connect directly to your Home Assistant installation. \n \n 1️⃣ Your location will only be used to check if you are connected to your local network. \n \n 2️⃣ It will not be shared with anyone. \n \n 3️⃣ If you do not allow this, the app will always connect over the internet instead. If not configured, it will protect your data and refuse the connection.";
+"NSMicrophoneUsageDescription" = "הקלט אודיו באמצעות פרונטאנד ההום אסיסטנט שלך.";
+"NSMotionUsageDescription" = "Motion is used to improve location updates with current motion type, as well as provide basic pedometer data.";
+"NSPhotoLibraryAddUsageDescription" = "Photo Library access is needed to allow saving photos from the web view.";
+"NSPhotoLibraryUsageDescription" = "Photo Library access is needed to allow saving photos from the web view.";
+"NSSiriUsageDescription" = "We use Siri to allow created shortcuts to interact with the app.";
+"NSSpeechRecognitionUsageDescription" = "משמש להכתיב טקסט למסייע";
+"SEND_LOCATION_APP_SHORTCUT_TITLE" = "Send Location";
+"TemporaryFullAccuracyReasonManualUpdate" = "הענק דיוק מלא לשימוש במיקום הנוכחי שלך עבור מעקב המכשירים שלך.";

@@ -1,0 +1,14 @@
+"panel::calendar" = "Calendario";
+"panel::config" = "Impostazioni";
+"panel::developer_tools" = "Strumenti per sviluppatori";
+"panel::energy" = "Energia";
+"panel::history" = "Storico";
+"panel::logbook" = "Attività";
+"panel::mailbox" = "Posta";
+"panel::map" = "Mappa";
+"panel::media_browser" = "Media";
+"panel::profile" = "Profilo";
+"panel::shopping_list" = "Lista della Spesa";
+"panel::states" = "Panoramica";
+"state::default::unavailable" = "Non disponibile";
+"state::default::unknown" = "Sconosciuto";

@@ -1,0 +1,52 @@
+# Updating this file to have new inputs or outputs?
+# Make sure to re-run: `fastlane update_swiftgen_config`
+# or it won't be executed when it changes in Xcode
+strings:
+  - inputs: Sources/App/Resources/en.lproj/Localizable.strings
+    outputs:
+      templateName: structured-swift5
+      output: Sources/Shared/Resources/SwiftGen/Strings.swift
+      params:
+        publicAccess: true
+        lookupFunction: Current.localized.string
+  - inputs: Sources/App/Resources/en.lproj/Core.strings
+    outputs:
+      templateName: structured-swift5
+      output: Sources/Shared/Resources/SwiftGen/CoreStrings.swift
+      params:
+        publicAccess: true
+        lookupFunction: Current.localized.string
+        enumName: CoreStrings
+  - inputs: Sources/App/Resources/en.lproj/Frontend.strings
+    outputs:
+      templateName: structured-swift5
+      output: Sources/Shared/Resources/SwiftGen/FrontendStrings.swift
+      params:
+        publicAccess: true
+        lookupFunction: Current.localized.string
+        enumName: FrontendStrings
+xcassets:
+  inputs:
+    - Sources/Shared/Assets/SharedAssets.xcassets
+  outputs:
+    templateName: swift5
+    output: Sources/Shared/Assets/Assets.swift
+    params:
+      publicAccess: true
+plist:
+  inputs:
+    - Sources/Shared/Resources/Info.plist
+  outputs:
+    - templateName: runtime-swift5
+      output: Sources/Shared/Resources/SwiftGen/SharedPlist.swift
+      params:
+        enumName: SharedPlistFiles
+        forceFileNameEnum: true
+json:
+  inputs:
+    - Tools/MaterialDesignIcons.json
+  outputs:
+    templatePath: Tools/icons.stencil
+    output: Sources/Shared/Iconic/MaterialDesignIcons.swift
+    params:
+      publicAccess: true

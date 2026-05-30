@@ -1,0 +1,27 @@
+Kontrolliere und überwache dein Zuhause von überall auf der Welt. Home Assistant Companion lässt dich all deine Geräte kontrollieren und bietet erweiterte Standortbestimmungs- und Benachrichtigungsengines um komplexe mobile Automatisierungen zu ermöglichen.
+
+Home Assistant ist eine Open-Source Heimautomatisierungsplattform in Python 3. Unterstützte Produkte umfassen:
+
+- Amazon Echo (Alexa)
+- Apple TV
+- Arduino
+- Belkin WeMo
+- Dark Sky
+- ecobee
+- Google Assistant
+- Google Cast
+- IFTTT
+- IKEA Trådfri (Tradfri)
+- Kodi/XBMC
+- MQTT
+- MySensors
+- Nest
+- Owntracks
+- Philips Hue
+- Plex
+- Pushbullet
+- Sonos
+- Wink
+- Z-Wave
+
+Home Assistant Companion setzt ein iPhone mit iOS 10.3 oder neuer voraus und eine bereits konfigurierte Home Assistant Instanz. Für die Standortbestimmung muss die Instanz aus dem Internet erreichbar und mit einem gültigen, nicht selbstsignierten SSL Zertifikat gesichert sein. Einfache Benachrichtigungen funktionieren ohne externen Zugriff.

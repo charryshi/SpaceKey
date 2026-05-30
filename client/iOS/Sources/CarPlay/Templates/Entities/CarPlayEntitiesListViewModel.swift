@@ -1,0 +1,211 @@
+import Foundation
+import HAKit
+import PromiseKit
+import Shared
+
+@available(iOS 16.0, *)
+final class CarPlayEntitiesListViewModel {
+    enum FilterType {
+        case domain(String)
+        case areaId(entityIds: [String])
+    }
+
+    enum CPEntityError: Error {
+        case unknown
+    }
+
+    private let filterType: FilterType
+    private var server: Server
+    private var entitiesCachedStates: HACachedStates
+
+    private var entityProviders: [CarPlayEntityListItem] = []
+    private var excludedEntityIds: Set<String> = []
+    weak var templateProvider: CarPlayEntitiesListTemplate?
+
+    private var sortedEntities: [HAEntity] {
+        let entities = entitiesCachedStates.all.filter({ entity in
+            // Filter out hidden entities and entities with categories (configuration/diagnostic)
+            guard !excludedEntityIds.contains(entity.entityId) else {
+                return false
+            }
+
+            switch self.filterType {
+            case let .domain(domain):
+                return entity.domain == domain
+            case let .areaId(entityIdsAllowed):
+                if let domain = Domain(rawValue: entity.domain) {
+                    return entityIdsAllowed.contains(entity.entityId) && domain.isCarPlaySupported
+                } else {
+                    return false
+                }
+            }
+        })
+
+        let entitiesSorted = entities.sorted(by: { e1, e2 in
+            let lowPriorityStates: Set<String> = [Domain.State.unknown.rawValue, Domain.State.unavailable.rawValue]
+            let state1 = e1.state
+            let state2 = e2.state
+
+            let deviceClassOrder: [DeviceClass] = [.garage, .garageDoor, .gate]
+
+            if lowPriorityStates.contains(state1), !lowPriorityStates.contains(state2) {
+                return false
+            } else if lowPriorityStates.contains(state2), !lowPriorityStates.contains(state1) {
+                return true
+            } else {
+                if deviceClassOrder.contains(e1.deviceClass), !deviceClassOrder.contains(e2.deviceClass) {
+                    return true
+                } else if deviceClassOrder.contains(e2.deviceClass), !deviceClassOrder.contains(e1.deviceClass) {
+                    return false
+                }
+            }
+
+            return (e1.attributes.friendlyName ?? e1.entityId) < (e2.attributes.friendlyName ?? e2.entityId)
+        })
+
+        return entitiesSorted
+    }
+
+    init(
+        filterType: FilterType,
+        server: Server,
+        entitiesCachedStates: HACachedStates
+    ) {
+        self.filterType = filterType
+        self.server = server
+        self.entitiesCachedStates = entitiesCachedStates
+    }
+
+    private func refreshExcludedEntityIds() {
+        do {
+            let registryEntities = try AppEntityRegistry.config(serverId: server.identifier.rawValue)
+            excludedEntityIds = Set(
+                registryEntities
+                    .filter { $0.entityCategory != nil || $0.isHidden }
+                    .compactMap(\.entityId)
+            )
+        } catch {
+            Current.Log
+                .error("Failed to fetch entity registry for CarPlay filtering: \(error.localizedDescription)")
+            excludedEntityIds = []
+        }
+    }
+
+    func update() {
+        refreshExcludedEntityIds()
+        // Fetch all areas for this server once and create a lookup map
+        let areas: [AppArea]
+        do {
+            areas = try AppArea.fetchAreas(for: server.identifier.rawValue)
+        } catch {
+            Current.Log.error("Failed to fetch areas for CarPlay entities: \(error.localizedDescription)")
+            areas = []
+        }
+        var entityToAreaMap: [String: String] = [:]
+        for area in areas {
+            for entityId in area.entities {
+                entityToAreaMap[entityId] = area.name
+            }
+        }
+
+        entityProviders = sortedEntities.map { entity in
+            let area = entityToAreaMap[entity.entityId]
+            let provider = CarPlayEntityListItem(
+                serverId: server.identifier.rawValue,
+                entity: entity,
+                area: area
+            )
+            provider.onDeferredPresentationUpdate = { [weak self] in
+                guard let self else { return }
+                templateProvider?.updateItems(entityProviders: entityProviders)
+            }
+            return provider
+        }
+
+        templateProvider?.updateItems(entityProviders: entityProviders)
+    }
+
+    func updateStates(entities: HACachedStates) {
+        entitiesCachedStates = entities
+        // Avoid computing property several times
+        let sortedEntities = sortedEntities
+        var didUpdateItems = false
+        entityProviders.forEach { item in
+            guard let updatedEntity = sortedEntities.first(where: { $0.entityId == item.entity.entityId }),
+                  shouldRefreshPresentation(for: item.entity, with: updatedEntity) else { return }
+            item.update(serverId: server.identifier.rawValue, entity: updatedEntity)
+            didUpdateItems = true
+        }
+
+        if didUpdateItems {
+            templateProvider?.updateItems(entityProviders: entityProviders)
+        }
+    }
+
+    private func shouldRefreshPresentation(for currentEntity: HAEntity, with updatedEntity: HAEntity) -> Bool {
+        currentEntity.state != updatedEntity.state ||
+            currentEntity.lastUpdated != updatedEntity.lastUpdated ||
+            currentEntity.attributes.friendlyName != updatedEntity.attributes.friendlyName ||
+            currentEntity.attributes.icon != updatedEntity.attributes.icon ||
+            currentEntity.attributes.dictionary["unit_of_measurement"] as? String !=
+            updatedEntity.attributes.dictionary["unit_of_measurement"] as? String ||
+            currentEntity.attributes.dictionary["device_class"] as? String !=
+            updatedEntity.attributes.dictionary["device_class"] as? String ||
+            currentEntity.attributes.dictionary["color_mode"] as? String !=
+            updatedEntity.attributes.dictionary["color_mode"] as? String ||
+            EntityColorAttributesParser.parseRGBColor(
+                from: currentEntity.attributes.dictionary["rgb_color"]
+            ) != EntityColorAttributesParser.parseRGBColor(
+                from: updatedEntity.attributes.dictionary["rgb_color"]
+            ) ||
+            EntityColorAttributesParser.parseHSColor(
+                from: currentEntity.attributes.dictionary["hs_color"]
+            ) != EntityColorAttributesParser.parseHSColor(
+                from: updatedEntity.attributes.dictionary["hs_color"]
+            )
+    }
+
+    func handleEntityTap(
+        entity: HAEntity,
+        executionStarted: @escaping () -> Void = {},
+        executionFinished: @escaping () -> Void = {},
+        completion: @escaping () -> Void
+    ) {
+        guard let api = Current.api(for: server) else {
+            Current.Log.error("No API available to handle CarPlay entity tap")
+            completion()
+            return
+        }
+
+        if let domain = Domain(rawValue: entity.domain), domain == .lock {
+            // Show confirmation and use shared execution method
+            templateProvider?.displayLockConfirmation(entity: entity, completion: {
+                executionStarted()
+                CarPlayLockConfirmation.execute(
+                    entityId: entity.entityId,
+                    currentState: entity.state,
+                    api: api
+                ) { success in
+                    if !success {
+                        Current.Log.error("Failed to execute lock action for entity: \(entity.entityId)")
+                    }
+                    executionFinished()
+                }
+            })
+            completion()
+        } else {
+            // For non-lock entities, use entity.onPress directly
+            executionStarted()
+            firstly {
+                entity.onPress(for: api)
+            }.done {
+                executionFinished()
+                completion()
+            }.catch { error in
+                Current.Log.error("Received error from callService during onPress call: \(error)")
+                executionFinished()
+                completion()
+            }
+        }
+    }
+}

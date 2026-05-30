@@ -1,0 +1,14 @@
+"panel::calendar" = "Kalendář";
+"panel::config" = "Nastavení";
+"panel::developer_tools" = "Nástroje pro vývojáře";
+"panel::energy" = "Energie";
+"panel::history" = "Historie";
+"panel::logbook" = "Aktivita";
+"panel::mailbox" = "Schránka";
+"panel::map" = "Mapa";
+"panel::media_browser" = "Média";
+"panel::profile" = "Profil";
+"panel::shopping_list" = "Nákupní seznam";
+"panel::states" = "Přehled";
+"state::default::unavailable" = "N/A";
+"state::default::unknown" = "Neznámý";

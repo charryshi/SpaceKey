@@ -1,0 +1,812 @@
+import PromiseKit
+import RealmSwift
+import SFSafeSymbols
+import Shared
+import SwiftUI
+import WebKit
+import XCGLogger
+
+struct DebugView: View {
+    @State private var showShareSheet = false
+    @State private var logsURL: URL?
+    @State private var tapsOnCasitaLogo = 0
+    @State private var showDeleteKeychainAlert = false
+    @State private var deleteKeychainConfirmationText = ""
+    @State private var deleteKeychainErrorMessage: String?
+    @State private var showDeleteKeychainError = false
+    @State private var showDeleteKeychainRestartAlert = false
+
+    private let feedbackGenerator = UINotificationFeedbackGenerator()
+
+    // Progress views
+    @State private var loadingLogs = false
+    @State private var loadingCleaningWebCache = false
+    @State private var loadingResetApp = false
+
+    // Alerts
+    @State private var showDeleteEntitiesAlert = false
+    @State private var showResetAppAlert = false
+    @State private var showClearAllowedTagsAlert = false
+    @State private var watchSyncErrorMessage: String?
+    @State private var showWatchSyncError = false
+
+    private static let deleteKeychainDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    var body: some View {
+        List {
+            AppleLikeListTopRowHeader(
+                image: .bugIcon,
+                title: L10n.Settings.Debugging.Header.title,
+                subtitle: L10n.Settings.Debugging.Header.subtitle
+            )
+
+            Section {
+                Button(action: {
+                    if let url = Current.Log.archiveURL() {
+                        logsURL = url
+                        if Current.isCatalyst {
+                            if let url = Current.Log.archiveURL() {
+                                URLOpener.shared.open(url, options: [:], completionHandler: nil)
+                            }
+                        } else {
+                            loadingLogs = true
+                            showShareSheet = true
+                        }
+                    } else {
+                        Current.Log.error("Logs archive URL not available")
+                    }
+                }, label: {
+                    linkContent(
+                        image: .init(systemSymbol: .filemenuAndSelection),
+                        title: Current.isCatalyst ? L10n.Settings.Developer.ShowLogFiles.title : L10n.Settings.Developer
+                            .ExportLogFiles.title,
+                        showProgressView: loadingLogs
+                    )
+                })
+            }
+            .sheet(isPresented: .init(get: { showShareSheet && logsURL != nil }, set: { showShareSheet = $0 })) {
+                if let logsURL {
+                    ActivityViewController(shareWrapper: .init(url: logsURL))
+                        .onAppear {
+                            loadingLogs = false
+                        }
+                        .onDisappear {
+                            do {
+                                try FileManager.default.removeItem(at: logsURL)
+                            } catch {
+                                Current.Log.error("Error deleting logs file: \(error)")
+                            }
+                        }
+                }
+            }
+
+            if #available(iOS 17, *), !Current.isCatalyst {
+                Section {
+                    NavigationLink {
+                        ThreadCredentialsManagementView()
+                    } label: {
+                        linkContent(
+                            image: Image(
+                                uiImage: Asset.thread.image.withRenderingMode(
+                                    .alwaysTemplate
+                                )
+                            ),
+                            title: L10n.SettingsDetails.Thread.title,
+                            imageSize: 22
+                        )
+                    }
+                } footer: {
+                    Text(
+                        L10n.Settings.Debugging.Thread.footer
+                    )
+                }
+            }
+
+            Section {
+                NavigationLink {
+                    ClientEventsLogView()
+                } label: {
+                    linkContent(image: .init(systemSymbol: .listDash), title: L10n.Settings.EventLog.title)
+                }
+
+                NavigationLink {
+                    LocationHistoryListView()
+                } label: {
+                    linkContent(
+                        image: .init(systemSymbol: .map),
+                        title: L10n.Settings.LocationHistory.title
+                    )
+                }
+
+                NavigationLink {
+                    DatabaseExplorerView()
+                } label: {
+                    linkContent(
+                        image: .init(systemSymbol: .tablecells),
+                        title: L10n.Settings.DatabaseExplorer.title
+                    )
+                }
+
+                #if DEBUG
+                NavigationLink {
+                    KeychainExplorerView()
+                } label: {
+                    linkContent(
+                        image: .init(systemSymbol: .key),
+                        title: L10n.Settings.Debugging.KeychainExplorer.title
+                    )
+                }
+                #endif
+            }
+
+            #if os(iOS) && !targetEnvironment(macCatalyst)
+            if #available(iOS 17.2, *) {
+                Section {
+                    NavigationLink {
+                        LiveActivitySettingsView()
+                    } label: {
+                        linkContent(
+                            image: .init(systemSymbol: .livephoto),
+                            title: L10n.LiveActivity.title
+                        )
+                    }
+                }
+            }
+            #endif
+
+            carPlayDebugSection
+
+            criticalSection
+
+            if tapsOnCasitaLogo < 10 {
+                Button(action: {
+                    feedbackGenerator.notificationOccurred(.success)
+                    tapsOnCasitaLogo += 1
+                }, label: {
+                    Image(uiImage: Asset.casita.image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 100, height: 100, alignment: .center)
+                })
+                .frame(maxWidth: .infinity, alignment: .center)
+                .listRowBackground(Color.clear)
+            } else {
+                developerSection
+            }
+        }
+        .modifier(deleteKeychainAlert)
+        .alert(deleteKeychainErrorMessage ?? L10n.errorLabel, isPresented: $showDeleteKeychainError) {
+            Button(L10n.okLabel, role: .cancel) {
+                deleteKeychainErrorMessage = nil
+            }
+        } message: {
+            Text(deleteKeychainErrorMessage ?? "")
+        }
+        .alert(L10n.Settings.Debugging.KeychainRestartRequired.title, isPresented: $showDeleteKeychainRestartAlert) {
+            Button(L10n.okLabel) {
+                forceAppRestartAfterKeychainDeletion()
+            }
+        } message: {
+            Text(L10n.Settings.Debugging.KeychainRestartRequired.message)
+        }
+        .alert(L10n.Settings.Developer.ClearAllowedTags.Complete.title, isPresented: $showClearAllowedTagsAlert) {
+            Button(L10n.okLabel, role: .cancel) {}
+        }
+    }
+
+    private func forceAppRestartAfterKeychainDeletion() {
+        #if DEBUG
+        Current.Log.info("Crashing app after full keychain deletion to force restart")
+        fatalError("Intentional crash after full keychain deletion to force app restart")
+        #else
+        Current.Log.warning("Full keychain deletion completed; app restart is required")
+        #endif
+    }
+
+    private var deleteKeychainAlert: some ViewModifier {
+        DeleteKeychainAlertModifier(
+            isPresented: $showDeleteKeychainAlert,
+            confirmationText: $deleteKeychainConfirmationText,
+            errorMessage: $deleteKeychainErrorMessage,
+            showError: $showDeleteKeychainError,
+            currentConfirmationDate: currentConfirmationDate,
+            feedbackGenerator: feedbackGenerator,
+            onDeleteSuccess: {
+                DispatchQueue.main.async {
+                    showDeleteKeychainRestartAlert = true
+                }
+            }
+        )
+    }
+
+    private func linkContent(
+        image: Image,
+        title: String,
+        imageSize: CGFloat = 18,
+        iconColor: Color = Color.haPrimary,
+        textColor: Color = Color(uiColor: .label),
+        showProgressView: Bool? = nil
+    ) -> some View {
+        HStack(spacing: DesignSystem.Spaces.two) {
+            image
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: imageSize, height: imageSize, alignment: .center)
+                .foregroundStyle(iconColor)
+            Text(title)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(textColor)
+            if let showProgressView {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .opacity(showProgressView ? 1 : 0)
+                    .animation(.easeOut(duration: 2), value: showProgressView)
+            }
+        }
+    }
+
+    private var criticalSection: some View {
+        Section {
+            Button {
+                showDeleteEntitiesAlert = true
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .deleteBackwardFill),
+                    title: L10n.Debug.Reset.EntitiesDatabase.title,
+                    iconColor: .red,
+                    textColor: .red
+                )
+            }
+            .alert(L10n.Alert.Confirmation.Generic.title, isPresented: $showDeleteEntitiesAlert) {
+                Button(role: .cancel, action: { /* no-op */ }) {
+                    Text(verbatim: L10n.cancelLabel)
+                }
+                Button(role: .destructive, action: {
+                    do {
+                        _ = try Current.database().write { db in
+                            try HAAppEntity.deleteAll(db)
+                            Current.Log.verbose("Deleted all app entities")
+                        }
+                    } catch {
+                        Current.Log.error("Failed to reset app entities, error: \(error)")
+                    }
+                }) {
+                    Text(verbatim: L10n.yesLabel)
+                }
+            } message: {
+                Text(verbatim: L10n.Alert.Confirmation.DeleteEntities.message)
+            }
+            Button {
+                loadingCleaningWebCache = true
+                Current.websiteDataStoreHandler.cleanCache {
+                    loadingCleaningWebCache = false
+                }
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .deleteBackwardFill),
+                    title: L10n.Settings.ResetSection.ResetWebCache.title,
+                    iconColor: .red,
+                    textColor: .red,
+                    showProgressView: loadingCleaningWebCache
+                )
+            }
+
+            Button {
+                showResetAppAlert = true
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .deleteBackwardFill),
+                    title: L10n.Settings.ResetSection.ResetApp.title,
+                    iconColor: .red,
+                    textColor: .red,
+                    showProgressView: loadingResetApp
+                )
+            }
+            .alert(L10n.Alert.Confirmation.Generic.title, isPresented: $showResetAppAlert) {
+                Button(role: .cancel, action: { /* no-op */ }) {
+                    Text(verbatim: L10n.cancelLabel)
+                }
+                Button(role: .destructive, action: {
+                    Task {
+                        await resetApp()
+                    }
+                }) {
+                    Text(verbatim: L10n.yesLabel)
+                }
+            } message: {
+                Text(verbatim: L10n.Settings.ResetSection.ResetAlert.title)
+            }
+
+        } footer: {
+            Text(verbatim: L10n.Settings.Debugging.CriticalSection.footer)
+        }
+    }
+
+    private var carPlayDebugSection: some View {
+        NavigationLink {
+            CarPlayDebugSettingsView()
+        } label: {
+            linkContent(
+                image: .init(systemSymbol: .carFill),
+                title: L10n.CarPlay.Debug.Settings.rowTitle
+            )
+        }
+    }
+
+    private var developerSection: some View {
+        Section {
+            Toggle("Toasts handled by the app", isOn: Binding(
+                get: { Current.settingsStore.toastsHandledByApp },
+                set: { Current.settingsStore.toastsHandledByApp = $0 }
+            ))
+            Button {
+                if let syncError = HomeAssistantAPI.SyncWatchContext() {
+                    watchSyncErrorMessage = syncError.localizedDescription
+                    showWatchSyncError = true
+                }
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .applewatchWatchface),
+                    title: L10n.Settings.Developer.SyncWatchContext.title
+                )
+            }
+            .alert(L10n.errorLabel, isPresented: $showWatchSyncError) {
+                Button(role: .cancel, action: { /* no-op */ }) {
+                    Text(verbatim: L10n.okLabel)
+                }
+            } message: {
+                Text(watchSyncErrorMessage.orEmpty)
+            }
+
+            Button {
+                copyRealm()
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .docOnDoc),
+                    title: L10n.Settings.Developer.CopyRealm.title
+                )
+            }
+
+            Button {
+                prefs.set(!prefs.bool(forKey: "showTranslationKeys"), forKey: "showTranslationKeys")
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .textBubble),
+                    title: L10n.Settings.Developer.DebugStrings.title
+                )
+            }
+
+            Button {
+                sendCameraNotification()
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .camera),
+                    title: L10n.Settings.Developer.CameraNotification.title
+                )
+            }
+
+            Button {
+                sendMapNotification()
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .map),
+                    title: L10n.Settings.Developer.MapNotification.title
+                )
+            }
+
+            Button {
+                AllowedTag.clearAll()
+                showClearAllowedTagsAlert = true
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .trash),
+                    title: L10n.Settings.Developer.ClearAllowedTags.title
+                )
+            }
+
+            Button {
+                deleteKeychainConfirmationText = ""
+                showDeleteKeychainAlert = true
+            } label: {
+                linkContent(
+                    image: .init(systemSymbol: .trash),
+                    title: "Delete keychain completely",
+                    iconColor: .red,
+                    textColor: .red
+                )
+            }
+
+            Toggle(isOn: .init(get: {
+                prefs.bool(forKey: XCGLogger.shouldNotifyUserDefaultsKey)
+            }, set: { newValue in
+                prefs.set(newValue, forKey: XCGLogger.shouldNotifyUserDefaultsKey)
+
+            })) {
+                linkContent(
+                    image: .init(systemSymbol: .info),
+                    title: L10n.Settings.Developer.AnnoyingBackgroundNotifications.title
+                )
+            }
+
+            Toggle(isOn: .init(get: {
+                Current.settingsStore.receiveDebugNotifications
+            }, set: { newValue in
+                Current.settingsStore.receiveDebugNotifications = newValue
+            })) {
+                Text("Receive debug notifications")
+            }
+
+        } header: {
+            Text(verbatim: L10n.Settings.Developer.header)
+        } footer: {
+            Text(verbatim: L10n.Settings.Developer.footer)
+        }
+    }
+
+    private func copyRealm() {
+        guard let backupURL = Realm.backup() else {
+            fatalError("Unable to get Realm backup")
+        }
+        let containerRealmPath = Realm.Configuration.defaultConfiguration.fileURL!
+
+        Current.Log.verbose("Would copy from \(backupURL) to \(containerRealmPath)")
+
+        if FileManager.default.fileExists(atPath: containerRealmPath.path) {
+            do {
+                _ = try FileManager.default.removeItem(at: containerRealmPath)
+            } catch {
+                Current.Log.error("Error occurred, here are the details:\n \(error)")
+            }
+        }
+
+        do {
+            _ = try FileManager.default.copyItem(at: backupURL, to: containerRealmPath)
+        } catch let error as NSError {
+            // Catch fires here, with an NSError being thrown
+            Current.Log.error("Error occurred, here are the details:\n \(error)")
+        }
+
+        let msg = L10n.Settings.Developer.CopyRealm.Alert.message(
+            backupURL.path,
+            containerRealmPath.path
+        )
+        Current.Log.verbose(msg)
+    }
+
+    private func sendMapNotification() {
+        let content = UNMutableNotificationContent()
+        content.body = L10n.Settings.Developer.MapNotification.Notification.body
+        content.sound = .default
+
+        var firstPinLatitude = "40.785091"
+        var firstPinLongitude = "-73.968285"
+
+        // swiftlint:disable prohibit_environment_assignment
+        if Current.appConfiguration == .fastlaneSnapshot,
+           let lat = prefs.string(forKey: "mapPin1Latitude"),
+           let lon = prefs.string(forKey: "mapPin1Longitude") {
+            firstPinLatitude = lat
+            firstPinLongitude = lon
+        }
+
+        var secondPinLatitude = "40.758896"
+        var secondPinLongitude = "-73.985130"
+
+        if Current.appConfiguration == .fastlaneSnapshot,
+           let lat = prefs.string(forKey: "mapPin2Latitude"),
+           let lon = prefs.string(forKey: "mapPin2Longitude") {
+            secondPinLatitude = lat
+            secondPinLongitude = lon
+        }
+        // swiftlint:enable prohibit_environment_assignment
+
+        content.userInfo = [
+            "homeassistant": [
+                "latitude": firstPinLatitude,
+                "longitude": firstPinLongitude,
+                "second_latitude": secondPinLatitude,
+                "second_longitude": secondPinLongitude,
+            ],
+        ]
+        content.categoryIdentifier = "map"
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+
+        let notificationRequest = UNNotificationRequest(
+            identifier: "mapContentExtension",
+            content: content,
+            trigger: trigger
+        )
+        UNUserNotificationCenter.current().add(notificationRequest)
+    }
+
+    private func sendCameraNotification() {
+        let content = UNMutableNotificationContent()
+        content.body = L10n.Settings.Developer.CameraNotification.Notification.body
+        content.sound = .default
+
+        var entityID = "camera.amcrest_camera"
+
+        if Current.appConfiguration == .fastlaneSnapshot,
+           let snapshotEntityID = prefs.string(forKey: "cameraEntityID") {
+            entityID = snapshotEntityID
+        }
+
+        content.userInfo = ["entity_id": entityID]
+        content.categoryIdentifier = "camera"
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+
+        let notificationRequest = UNNotificationRequest(
+            identifier: "cameraContentExtension",
+            content: content,
+            trigger: trigger
+        )
+        UNUserNotificationCenter.current().add(notificationRequest)
+    }
+
+    private var currentConfirmationDate: String {
+        Self.deleteKeychainDateFormatter.string(from: Date())
+    }
+
+    private func resetApp() async {
+        loadingResetApp = true
+        Current.Log.verbose("Resetting app!")
+
+        for api in Current.apis {
+            await revokeToken(api: api)
+            await wait(seconds: 13)
+            api.connection.disconnect()
+        }
+        for server in Current.servers.all {
+            Current.servers.remove(identifier: server.identifier)
+        }
+        resetStores()
+        setDefaults()
+        await resetPushID()
+        loadingResetApp = false
+        Current.onboardingObservation.needed(.logout)
+    }
+
+    private func wait(seconds: Int) async {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+    }
+
+    private func revokeToken(api: HomeAssistantAPI) async {
+        await withCheckedContinuation { continuation in
+            api.tokenManager.revokeToken().pipe { result in
+                switch result {
+                case .fulfilled:
+                    break
+                case let .rejected(error):
+                    Current.Log
+                        .error(
+                            "Failed to revoke token for api \(api.server.info.name) \(api.server.info.connection.activeURL()?.absoluteString ?? "Uknown active URL"), error: \(error.localizedDescription)"
+                        )
+                }
+                continuation.resume()
+            }
+        }
+    }
+
+    private func resetPushID() async {
+        await withCheckedContinuation { continuation in
+            Current.notificationManager.resetPushID().pipe { result in
+                switch result {
+                case .fulfilled:
+                    break
+                case let .rejected(error):
+                    Current.Log.error("Failed to reset push ID, error: \(error.localizedDescription)")
+                }
+                continuation.resume()
+            }
+        }
+    }
+}
+
+private struct CarPlayDebugSettingsView: View {
+    @State private var settings: CarPlayAssistDebugSettings
+    @State private var showResetConfirmation = false
+
+    init() {
+        _settings = State(initialValue: Current.settingsStore.carPlayAssistDebugSettings)
+    }
+
+    var body: some View {
+        List {
+            assistSessionSection
+            ttsPlaybackSection
+            ttsSessionSection
+            resetSection
+        }
+        .navigationTitle(L10n.CarPlay.Debug.Settings.navigationTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: settings) { updatedSettings in
+            Current.settingsStore.carPlayAssistDebugSettings = updatedSettings
+        }
+    }
+
+    private var assistSessionSection: some View {
+        Section {
+            Picker(L10n.CarPlay.Debug.Settings.AssistSession.audioCategory, selection: $settings.audioCategory) {
+                ForEach(CarPlayAssistAudioCategory.allCases, id: \.self) { category in
+                    Text(category.title).tag(category)
+                }
+            }
+
+            Picker(L10n.CarPlay.Debug.Settings.AssistSession.audioMode, selection: $settings.audioMode) {
+                ForEach(CarPlayAssistAudioMode.allCases, id: \.self) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+
+            Picker(
+                L10n.CarPlay.Debug.Settings.AssistSession.preferredSampleRate,
+                selection: $settings.preferredSampleRate
+            ) {
+                ForEach(CarPlayAssistPreferredSampleRate.allCases, id: \.self) { sampleRate in
+                    Text(sampleRate.title).tag(sampleRate)
+                }
+            }
+
+            Toggle(L10n.CarPlay.Debug.Settings.AssistSession.allowBluetoothHfp, isOn: $settings.allowBluetoothHFP)
+            Toggle(L10n.CarPlay.Debug.Settings.AssistSession.allowBluetoothA2dp, isOn: $settings.allowBluetoothA2DP)
+            Toggle(L10n.CarPlay.Debug.Settings.AssistSession.duckOthers, isOn: $settings.duckOthers)
+            Toggle(L10n.CarPlay.Debug.Settings.AssistSession.interruptSpokenAudio, isOn: $settings.interruptSpokenAudio)
+            Toggle(
+                L10n.CarPlay.Debug.Settings.AssistSession.recorderManagesAudioSession,
+                isOn: $settings.recorderManagesAudioSession
+            )
+            Toggle(
+                L10n.CarPlay.Debug.Settings.AssistSession.playRecordingIndicatorTone,
+                isOn: $settings.playRecordingIndicatorTone
+            )
+        } header: {
+            Text(L10n.CarPlay.Debug.Settings.AssistSession.title)
+        } footer: {
+            Text(L10n.CarPlay.Debug.Settings.AssistSession.footer)
+        }
+    }
+
+    private var ttsPlaybackSection: some View {
+        Section {
+            Picker(L10n.CarPlay.Debug.Settings.TtsPlayback.playbackStrategy, selection: $settings.ttsPlaybackStrategy) {
+                ForEach(CarPlayAssistTTSPlaybackStrategy.allCases, id: \.self) { strategy in
+                    Text(strategy.title).tag(strategy)
+                }
+            }
+
+            Picker(L10n.CarPlay.Debug.Settings.TtsPlayback.playbackDelay, selection: $settings.ttsPlaybackDelay) {
+                ForEach(CarPlayAssistPlaybackDelay.allCases, id: \.self) { delay in
+                    Text(delay.title).tag(delay)
+                }
+            }
+
+            Toggle(
+                L10n.CarPlay.Debug.Settings.TtsPlayback.avplayerWaitsToMinimizeStalling,
+                isOn: $settings.avPlayerAutomaticallyWaitsToMinimizeStalling
+            )
+        } header: {
+            Text(L10n.CarPlay.Debug.Settings.TtsPlayback.title)
+        } footer: {
+            Text(L10n.CarPlay.Debug.Settings.TtsPlayback.footer)
+        }
+    }
+
+    private var ttsSessionSection: some View {
+        Section {
+            Toggle(
+                L10n.CarPlay.Debug.Settings.TtsAudioSession.reconfigureBeforeTts,
+                isOn: $settings.ttsReconfigureAudioSession
+            )
+            Toggle(
+                L10n.CarPlay.Debug.Settings.TtsAudioSession.deactivateBeforeReconfigure,
+                isOn: $settings.ttsDeactivateBeforeReconfigure
+            )
+            Toggle(
+                L10n.CarPlay.Debug.Settings.TtsAudioSession.activateAudioSessionBeforePlay,
+                isOn: $settings.ttsActivateAudioSession
+            )
+
+            Picker(L10n.CarPlay.Debug.Settings.TtsAudioSession.category, selection: $settings.ttsCategory) {
+                ForEach(CarPlayAssistAudioCategory.allCases, id: \.self) { category in
+                    Text(category.title).tag(category)
+                }
+            }
+
+            Picker(L10n.CarPlay.Debug.Settings.TtsAudioSession.mode, selection: $settings.ttsMode) {
+                ForEach(CarPlayAssistAudioMode.allCases, id: \.self) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+
+            Toggle(L10n.CarPlay.Debug.Settings.TtsAudioSession.allowBluetoothHfp, isOn: $settings.ttsAllowBluetoothHFP)
+            Toggle(
+                L10n.CarPlay.Debug.Settings.TtsAudioSession.allowBluetoothA2dp,
+                isOn: $settings.ttsAllowBluetoothA2DP
+            )
+            Toggle(L10n.CarPlay.Debug.Settings.TtsAudioSession.duckOthers, isOn: $settings.ttsDuckOthers)
+            Toggle(
+                L10n.CarPlay.Debug.Settings.TtsAudioSession.interruptSpokenAudio,
+                isOn: $settings.ttsInterruptSpokenAudio
+            )
+        } header: {
+            Text(L10n.CarPlay.Debug.Settings.TtsAudioSession.title)
+        } footer: {
+            Text(L10n.CarPlay.Debug.Settings.TtsAudioSession.footer)
+        }
+    }
+
+    private var resetSection: some View {
+        Section {
+            Button(L10n.CarPlay.Debug.Settings.reset, role: .destructive) {
+                showResetConfirmation = true
+            }
+            .confirmationDialog(
+                L10n.Alert.Confirmation.Generic.title,
+                isPresented: $showResetConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button(L10n.CarPlay.Debug.Settings.reset, role: .destructive) {
+                    settings = .default
+                }
+                Button(L10n.cancelLabel, role: .cancel) {}
+            }
+        }
+    }
+}
+
+private struct DeleteKeychainAlertModifier: ViewModifier {
+    @Binding var isPresented: Bool
+    @Binding var confirmationText: String
+    @Binding var errorMessage: String?
+    @Binding var showError: Bool
+
+    let currentConfirmationDate: String
+    let feedbackGenerator: UINotificationFeedbackGenerator
+    let onDeleteSuccess: () -> Void
+
+    func body(content: Content) -> some View {
+        content.alert(L10n.Settings.Debugging.DeleteKeychain.title, isPresented: $isPresented) {
+            TextField(L10n.Settings.Debugging.DeleteKeychain.datePlaceholder, text: $confirmationText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            Button(L10n.cancelLabel, role: .cancel) {
+                confirmationText = ""
+            }
+            Button(L10n.Settings.Debugging.DeleteKeychain.deleteButton, role: .destructive) {
+                guard confirmationText == currentConfirmationDate else {
+                    errorMessage = L10n.Settings.Debugging.DeleteKeychain.invalidDateFormat(currentConfirmationDate)
+                    showError = true
+                    return
+                }
+
+                do {
+                    try deleteKeychainCompletely()
+                    feedbackGenerator.notificationOccurred(.success)
+                    onDeleteSuccess()
+                } catch {
+                    Current.Log.error("Failed to delete keychain completely: \(error.localizedDescription)")
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+
+                confirmationText = ""
+            }
+        } message: {
+            Text(L10n.Settings.Debugging.DeleteKeychain.messageFormat(currentConfirmationDate))
+        }
+    }
+}
+
+#Preview {
+    DebugView()
+}

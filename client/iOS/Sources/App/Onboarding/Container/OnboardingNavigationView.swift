@@ -1,0 +1,83 @@
+import Shared
+import SwiftUI
+
+enum OnboardingStyle: Equatable {
+    case initial
+    case required
+    case secondary
+
+    var insertsCancelButton: Bool {
+        switch self {
+        case .initial, .required: return false
+        case .secondary: return true
+        }
+    }
+}
+
+enum OnboardingNavigation {
+    public static var requiredOnboardingStyle: OnboardingStyle? {
+        if Current.servers.all.isEmpty {
+            return .required
+        } else {
+            return nil
+        }
+    }
+}
+
+struct OnboardingNavigationView: View {
+    @Environment(\.dismiss) private var dismiss
+    @StateObject public var viewModel = OnboardingNavigationViewModel()
+    public let onboardingStyle: OnboardingStyle
+
+    init(onboardingStyle: OnboardingStyle) {
+        self.onboardingStyle = onboardingStyle
+    }
+
+    var body: some View {
+        NavigationView {
+            Group {
+                switch onboardingStyle {
+                case .initial, .required, .secondary:
+                    gatewayActivationView
+                }
+            }
+            .navigationViewStyle(.stack)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if onboardingStyle.insertsCancelButton, !Current.isCatalyst {
+                        Button(action: {
+                            closeOnboarding()
+                        }) {
+                            Text(L10n.cancelLabel)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationViewStyle(.stack)
+        .onChange(of: viewModel.shouldDismiss) { newValue in
+            if newValue {
+                closeOnboarding()
+            }
+        }
+    }
+
+    private var gatewayActivationView: some View {
+        PermissionGatewayActivationView(
+            embeddedInNavigationView: false,
+            showsCloseButton: onboardingStyle.insertsCancelButton
+        ) { server in
+            viewModel.gatewayActivationSucceeded(server: server)
+        }
+    }
+
+    private func closeOnboarding() {
+        if onboardingStyle == .secondary {
+            dismiss()
+        } else {
+            Current.sceneManager.webViewWindowControllerPromise.done { windowController in
+                windowController.setup()
+            }
+        }
+    }
+}

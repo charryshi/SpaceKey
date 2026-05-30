@@ -1,0 +1,14 @@
+"panel::calendar" = "カレンダー";
+"panel::config" = "設定";
+"panel::developer_tools" = "開発者ツール";
+"panel::energy" = "エネルギー";
+"panel::history" = "履歴";
+"panel::logbook" = "アクティビティ";
+"panel::mailbox" = "メールボックス";
+"panel::map" = "地図";
+"panel::media_browser" = "メディア";
+"panel::profile" = "プロファイル";
+"panel::shopping_list" = "ショッピングリスト";
+"panel::states" = "概要";
+"state::default::unavailable" = "利用不可";
+"state::default::unknown" = "不明";

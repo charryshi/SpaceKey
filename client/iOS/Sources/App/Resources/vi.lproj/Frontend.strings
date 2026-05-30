@@ -1,0 +1,14 @@
+"panel::calendar" = "Lịch";
+"panel::config" = "Cài đặt";
+"panel::developer_tools" = "Công cụ nhà phát triển";
+"panel::energy" = "Năng lượng";
+"panel::history" = "Lịch sử";
+"panel::logbook" = "Hoạt động";
+"panel::mailbox" = "Hộp thư";
+"panel::map" = "Bản đồ";
+"panel::media_browser" = "Phương tiện";
+"panel::profile" = "Hồ sơ";
+"panel::shopping_list" = "Danh sách mua sắm";
+"panel::states" = "Tổng quan";
+"state::default::unavailable" = "Không có sẵn";
+"state::default::unknown" = "Không rõ";

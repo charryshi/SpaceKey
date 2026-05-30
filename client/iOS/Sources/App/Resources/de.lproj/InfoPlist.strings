@@ -1,0 +1,17 @@
+"NFCReaderUsageDescription" = "Lesen und Beschreiben von NFC-Tags erlaubt das Auslösen von Ereignissen.";
+"NSCameraUsageDescription" = "Nimm Fotos auf und sende sie an deinen Home Assistant Server.";
+"NSCrossWebsiteTrackingUsageDescription" = "Aktiviere optional das Cross-Site-Tracking, wenn deine Konfiguration dies erfordert.";
+"NSFocusStatusUsageDescription" = "Melde deinen Fokusstatus als Sensor.";
+"NSLocalNetworkUsageDescription" = "Finde und kommuniziere mit deiner Home Assistant Instanz.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "\n 🔵 Wir benötigen außerdem die Berechtigung, „immer“ auf den Standort zuzugreifen, damit die App Hintergrundvorgänge ausführen kann. \n\n ⚠️ Ohne diese Berechtigung kann die App nicht entscheiden, welche Verbindung (lokal oder remote) im Hintergrund verwendet werden soll, und wird immer die Remoteverbindung verwenden.";
+"NSLocationAlwaysUsageDescription" = "Für Features wie iBeacons, Geofences, Hintergrundaktualisierungen des Standorts und akkurates Reporting benötigen wir immer Zugriff auf deinen Standort.";
+"NSLocationUsageDescription" = "Aktivieren, um deinen Gerätestandort als Device Tracker an deinen Home Assistant Server zu senden.";
+"NSLocationWhenInUseUsageDescription" = "Diese App benötigt Standortzugriff, um sich direkt mit deiner Home Assistant-Installation zu verbinden. \n \n 1️⃣ Dein Standort wird nur verwendet, um zu überprüfen, ob du mit deinem lokalen Netzwerk verbunden bist. \n \n 2️⃣ Er wird nicht an Dritte weitergegeben. \n \n 3️⃣ Wenn du dies nicht zulässt, stellt die App immer die Verbindung über das Internet her. Wenn dies nicht konfiguriert ist, schützt die App deine Daten und verweigert die Verbindung.";
+"NSMicrophoneUsageDescription" = "Nehme Audio mit deinem Home Assistant Frontend auf.";
+"NSMotionUsageDescription" = "Bewegung wird verwendet, um Standortaktualisierungen mit dem aktuellen Bewegungstyp zu verbessern und grundlegende Pedometerdaten bereitzustellen.";
+"NSPhotoLibraryAddUsageDescription" = "Der Zugriff auf die Fotobibliothek ist erforderlich, um das Speichern von Fotos aus der Webansicht zu ermöglichen.";
+"NSPhotoLibraryUsageDescription" = "Der Zugriff auf die Fotobibliothek ist erforderlich, um das Speichern von Fotos aus der Webansicht zu ermöglichen.";
+"NSSiriUsageDescription" = "Wir verwenden Siri, um erstellten Verknüpfungen die Interaktion mit der App zu ermöglichen.";
+"NSSpeechRecognitionUsageDescription" = "Wird verwendet, um Assist Text zu diktieren.";
+"SEND_LOCATION_APP_SHORTCUT_TITLE" = "Standort senden";
+"TemporaryFullAccuracyReasonManualUpdate" = "Erlaube genauen Zugriff auf deinen Standort, um Device Tracker zu verwenden.";

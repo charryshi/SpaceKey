@@ -1,0 +1,69 @@
+import CarPlay
+import Foundation
+import HAKit
+import Shared
+
+@available(iOS 16.0, *)
+class CarPlayDomainsListTemplate: CarPlayTemplateProvider {
+    private var childTemplateProvider: (any CarPlayTemplateProvider)?
+
+    private let viewModel: CarPlayDomainsListViewModel
+    private let paginatedList = CarPlayPaginatedListTemplate(
+        title: L10n.About.Logo.title,
+        templateItems: []
+    )
+
+    weak var interfaceController: CPInterfaceController?
+    var template: CPListTemplate
+
+    init(viewModel: CarPlayDomainsListViewModel) {
+        self.viewModel = viewModel
+        guard let listTemplate = paginatedList.listTemplate else {
+            fatalError("Expected CarPlayPaginatedListTemplate to create a CPListTemplate")
+        }
+        listTemplate.emptyViewSubtitleVariants = [L10n.CarPlay.Labels.emptyDomainList]
+        self.template = listTemplate
+        template.tabTitle = L10n.CarPlay.Navigation.Tab.domains
+        template.tabImage = MaterialDesignIcons.devicesIcon.carPlayIcon()
+
+        viewModel.templateProvider = self
+    }
+
+    func updateDomainItems(items: [any CPListTemplateItem]) {
+        paginatedList.updateItems(items: items)
+    }
+
+    func update() {
+        /* no-op */
+    }
+
+    func templateWillDisappear(template: CPTemplate) {
+        if self.template == template {
+            /* no-op */
+        }
+        childTemplateProvider?.templateWillDisappear(template: template)
+    }
+
+    func templateWillAppear(template: CPTemplate) {
+        if template == self.template {
+            /* no-op */
+        }
+        childTemplateProvider?.templateWillAppear(template: template)
+    }
+
+    func entitiesStateChange(serverId: String, entities: HACachedStates) {
+        viewModel.update(entities: entities)
+        viewModel.entitiesListTemplate?.entitiesStateChange(serverId: serverId, entities: entities)
+    }
+
+    func presentEntitiesList(template: CarPlayEntitiesListTemplate) {
+        template.interfaceController = interfaceController
+
+        childTemplateProvider = template
+        interfaceController?.pushTemplate(
+            template.template,
+            animated: true,
+            completion: nil
+        )
+    }
+}

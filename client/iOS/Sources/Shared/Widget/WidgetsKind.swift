@@ -1,0 +1,33 @@
+import Foundation
+
+public enum WidgetsKind: String, CaseIterable {
+    case assist = "WidgetAssist"
+    case actions = "WidgetActions"
+    case openPage = "WidgetOpenPage"
+    case gauge = "WidgetGauge"
+    case details = "WidgetDetails"
+    case scripts = "WidgetScripts"
+    case sensors
+    case custom
+    case commonlyUsedEntities
+    case controlAutomation
+    case todoList
+    case controlScript
+    case controlScene
+    case controlAssist
+    case controlOpenPage
+    case controlLight
+    case controlSwitch
+    case controlCover
+    case controlFan
+    case controlOpenEntity
+    case controlOpenCamera
+    case controlOpenCamerasList
+    case controlOpenLock
+    case controlOpenCoverEntity
+    case controlOpenInputBoolean
+    case controlOpenLight
+    case controlOpenSwitch
+    case controlOpenSensor
+    case controlButton
+}

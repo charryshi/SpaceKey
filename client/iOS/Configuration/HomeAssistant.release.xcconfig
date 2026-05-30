@@ -1,0 +1,19 @@
+#include "HomeAssistant.xcconfig"
+
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY[sdk=iphoneos*] = Apple Distribution
+CODE_SIGN_IDENTITY[sdk=watchos*] = Apple Distribution
+CODE_SIGN_IDENTITY[sdk=macosx*] = Developer ID Application
+PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = iOS App Store - $(TARGET_NAME)
+PROVISIONING_PROFILE_SPECIFIER[sdk=watchos*] = iOS App Store - $(TARGET_NAME)
+PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*] = Mac Dev ID - $(TARGET_NAME)
+
+VALIDATE_PRODUCT = YES
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+OTHER_SWIFT_FLAGS = $(inherited) -DRELEASE
+
+ENABLE_NS_ASSERTIONS = NO
+LLVM_LTO = YES
+SWIFT_OPTIMIZATION_LEVEL = -O
+GCC_OPTIMIZATION_LEVEL = s
+SWIFT_COMPILATION_MODE = wholemodule

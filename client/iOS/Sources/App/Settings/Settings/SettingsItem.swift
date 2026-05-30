@@ -1,0 +1,245 @@
+import Shared
+import SwiftUI
+
+enum SettingsItem: String, Hashable, CaseIterable {
+    case servers
+    case general
+    case gestures
+    case kiosk
+    case location
+    case notifications
+    case liveActivities
+    case sensors
+    case nfc
+    case widgets
+    case appIconShortcuts
+    case watch
+    case carPlay
+    case complications
+    case actions
+    case help
+    case privacy
+    case debugging
+    case whatsNew
+
+    var title: String {
+        switch self {
+        case .servers: return L10n.Settings.ConnectionSection.servers
+        case .general: return L10n.SettingsDetails.General.title
+        case .gestures: return L10n.Gestures.Screen.title
+        case .kiosk: return L10n.Kiosk.title
+        case .location: return L10n.Settings.DetailsSection.LocationSettingsRow.title
+        case .notifications: return L10n.Settings.DetailsSection.NotificationSettingsRow.title
+        case .liveActivities: return L10n.LiveActivity.title
+        case .sensors: return L10n.SettingsSensors.title
+        case .nfc: return L10n.Tags.title
+        case .widgets: return L10n.Settings.Widgets.title
+        case .appIconShortcuts: return L10n.Settings.AppIconShortcuts.title
+        case .watch: return L10n.Settings.DetailsSection.WatchRowConfiguration.title
+        case .carPlay: return "CarPlay"
+        case .complications: return L10n.Settings.DetailsSection.WatchRowComplications.title
+        case .actions: return L10n.SettingsDetails.LegacyActions.title
+        case .help: return L10n.helpLabel
+        case .privacy: return L10n.SettingsDetails.Privacy.title
+        case .debugging: return L10n.Settings.Debugging.title
+        case .whatsNew: return L10n.Settings.WhatsNew.title
+        }
+    }
+
+    var icon: some View {
+        Group {
+            switch self {
+            case .servers:
+                MaterialDesignIconsImage(icon: .serverIcon, size: 24)
+            case .general:
+                MaterialDesignIconsImage(icon: .paletteOutlineIcon, size: 24)
+            case .gestures:
+                MaterialDesignIconsImage(icon: .gestureIcon, size: 24)
+            case .kiosk:
+                MaterialDesignIconsImage(icon: .tabletIcon, size: 24)
+            case .location:
+                MaterialDesignIconsImage(icon: .crosshairsGpsIcon, size: 24)
+            case .notifications:
+                MaterialDesignIconsImage(icon: .bellOutlineIcon, size: 24)
+            case .liveActivities:
+                MaterialDesignIconsImage(icon: .playBoxOutlineIcon, size: 24)
+            case .sensors:
+                MaterialDesignIconsImage(icon: .formatListBulletedIcon, size: 24)
+            case .nfc:
+                MaterialDesignIconsImage(icon: .nfcVariantIcon, size: 24)
+            case .widgets:
+                MaterialDesignIconsImage(icon: .widgetsIcon, size: 24)
+            case .appIconShortcuts:
+                MaterialDesignIconsImage(icon: .applicationIcon, size: 24)
+            case .watch:
+                MaterialDesignIconsImage(icon: .watchVariantIcon, size: 24)
+            case .carPlay:
+                MaterialDesignIconsImage(icon: .carBackIcon, size: 24)
+            case .complications:
+                MaterialDesignIconsImage(icon: .chartDonutIcon, size: 24)
+            case .actions:
+                MaterialDesignIconsImage(icon: .gamepadVariantOutlineIcon, size: 24)
+            case .help:
+                MaterialDesignIconsImage(icon: .helpCircleOutlineIcon, size: 24)
+            case .privacy:
+                MaterialDesignIconsImage(icon: .lockOutlineIcon, size: 24)
+            case .debugging:
+                MaterialDesignIconsImage(icon: .bugIcon, size: 24)
+            case .whatsNew:
+                MaterialDesignIconsImage(icon: .starIcon, size: 24)
+            }
+        }
+    }
+
+    var accessoryIcon: some View {
+        Group {
+            if self == .help || self == .whatsNew {
+                MaterialDesignIconsImage(icon: .openInNewIcon, size: 18)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    var destinationView: some View {
+        switch self {
+        case .servers:
+            SettingsServersView()
+        case .general:
+            GeneralSettingsView()
+        case .gestures:
+            GesturesSetupView()
+        case .kiosk:
+            KioskSettingsView()
+        case .location:
+            LocationSettingsView()
+        case .notifications:
+            SettingsNotificationsView()
+        case .liveActivities:
+            #if os(iOS) && !targetEnvironment(macCatalyst)
+            if #available(iOS 17.2, *) {
+                LiveActivitySettingsView()
+            }
+            #else
+            EmptyView()
+            #endif
+        case .sensors:
+            SensorListView()
+        case .nfc:
+            TagsView()
+        case .widgets:
+            CustomWidgetsListView()
+        case .appIconShortcuts:
+            AppIconShortcutsConfigurationView()
+        case .watch:
+            WatchConfigurationView()
+                .environment(\.colorScheme, .dark)
+        case .carPlay:
+            CarPlayConfigurationView(needsNavigationController: false)
+        case .complications:
+            SettingsComplicationsView()
+        case .actions:
+            ActionsSettingsView()
+        case .help:
+            EmptyView()
+        case .privacy:
+            PrivacyView()
+        case .debugging:
+            DebugView()
+        case .whatsNew:
+            EmptyView()
+        }
+    }
+
+    static var allVisibleCases: [SettingsItem] {
+        guard !AppConstants.isPermissionGatewayBuild else { return [] }
+
+        return allCases.filter { item in
+            // Filter based on platform
+            #if targetEnvironment(macCatalyst)
+            if item == .servers || item == .gestures || item == .kiosk || item == .watch || item == .carPlay ||
+                item == .appIconShortcuts ||
+                item == .complications || item == .nfc || item == .help ||
+                item == .whatsNew {
+                return false
+            }
+            #endif
+            // Live Activities are shown in DebugView
+            if item == .liveActivities {
+                return false
+            }
+            return true
+        }
+    }
+
+    static var generalItems: [SettingsItem] {
+        guard !AppConstants.isPermissionGatewayBuild else { return [] }
+        return [.general, .gestures, .location, .notifications, .kiosk]
+    }
+
+    static var integrationItems: [SettingsItem] {
+        guard !AppConstants.isPermissionGatewayBuild else { return [] }
+        return [.sensors, .nfc, .widgets, .appIconShortcuts]
+    }
+
+    static var watchItems: [SettingsItem] {
+        guard !AppConstants.isPermissionGatewayBuild else { return [] }
+        return [.watch, .complications]
+    }
+
+    static var carPlayItems: [SettingsItem] {
+        guard !AppConstants.isPermissionGatewayBuild else { return [] }
+        return [.carPlay]
+    }
+
+    static var legacyItems: [SettingsItem] {
+        guard !AppConstants.isPermissionGatewayBuild else { return [] }
+        return [.actions]
+    }
+
+    static var helpItems: [SettingsItem] {
+        guard !AppConstants.isPermissionGatewayBuild else { return [] }
+        return [.help, .privacy, .debugging]
+    }
+}
+
+// MARK: - Material Design Icons Image
+
+struct MaterialDesignIconsImage: View {
+    let icon: MaterialDesignIcons
+    let size: CGFloat
+
+    var body: some View {
+        Image(uiImage: icon.image(ofSize: CGSize(width: size, height: size), color: .label))
+            .renderingMode(.template)
+    }
+}
+
+// MARK: - Wrapper Views for UIKit Controllers
+
+struct SettingsServersView: View {
+    var body: some View {
+        List {
+            Section(
+                header: Text(L10n.Settings.ConnectionSection.serversHeader),
+                footer: Text(L10n.Settings.ConnectionSection.serversFooter)
+            ) {
+                ServersListView()
+            }
+        }
+        .navigationTitle(L10n.Settings.ConnectionSection.servers)
+    }
+}
+
+struct SettingsNotificationsView: View {
+    var body: some View {
+        NotificationSettingsView()
+    }
+}
+
+struct SettingsComplicationsView: View {
+    var body: some View {
+        ComplicationListView()
+            .navigationTitle(L10n.Settings.DetailsSection.WatchRowComplications.title)
+    }
+}

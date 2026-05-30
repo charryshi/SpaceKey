@@ -1,0 +1,67 @@
+// swiftlint:disable all
+// swiftformat:disable all
+// Generated using SwiftGen — https://github.com/SwiftGen/SwiftGen
+
+// NOTE: many type declarations are extremely verbose here to improve compile times
+
+import Foundation
+
+{% macro caseName name %}{{name|swiftIdentifier|snakeToCamelCase|lowerFirstWord}}Icon{% endmacro %}
+{% macro unicodeValue codepoint %}"{{ "\u{" }}{{ codepoint }}{{ "}" }}"{% endmacro %}
+{% macro valueName name %}"{{name|swiftIdentifier|lowercase}}"{% endmacro %}
+{% if files %}
+{% set accessModifier %}{% if param.publicAccess %}public{% else %}internal{% endif %}{% endset %}
+{% for file in files %}
+{% set icons file.document.data %}
+{% set typeName %}{{param.typeName|default:file.name}}{% endset %}
+{{ accessModifier }} final class {{ typeName }}: CaseIterable, Hashable, Equatable, CustomStringConvertible, IconDrawable {
+    {{ accessModifier }} static let familyName: String = "{{ typeName }}"
+    {{ accessModifier }} static let count: Int = {{ icons.count }}
+    {{ accessModifier }} let name: String
+    {{ accessModifier }} let unicode: String
+
+    {{ accessModifier }} var description: String {
+        "<MaterialDesignIcons: \(name)>"
+    }
+
+    public convenience init(named iconName: String) {
+        self.init(named: iconName, fallback: Self.allCases.first!)
+    }
+
+    public convenience init(named iconName: String, fallback: MaterialDesignIcons) {
+        let existing: {{ typeName }}
+
+        if let found = Self.allCases.first(where: { $0.name == iconName.lowercased() }) {
+            existing = found
+        } else {
+            existing = fallback
+        }
+
+        self.init(name: existing.name, unicode: existing.unicode)
+    }
+
+    private init(name: String, unicode: String) {
+        self.name = name
+        self.unicode = unicode
+    }
+
+    {{ accessModifier }} static func == (lhs: {{ typeName }}, rhs: {{ typeName }}) -> Bool {
+        lhs.unicode == rhs.unicode
+    }
+
+    {{ accessModifier }} func hash(into hasher: inout Hasher) {
+        hasher.combine(unicode)
+    }
+
+    {% for icon in icons %}
+    {{ accessModifier }} static let {% call caseName icon.name %} = {{ typeName }}(name: {% call valueName icon.name %}, unicode: {% call unicodeValue icon.codepoint %})
+    {% endfor %}
+
+    {{ accessModifier }} static let allCases: [{{ typeName }}] = [
+        {% for icon in icons %}
+            {{ typeName }}.{% call caseName icon.name %},
+        {% endfor %}
+    ]
+}
+{% endfor %}
+{% endif %}

@@ -1,0 +1,14 @@
+"panel::calendar" = "Ημερολόγιο";
+"panel::config" = "Ρυθμίσεις";
+"panel::developer_tools" = "Εργαλεία προγραμματιστή";
+"panel::energy" = "Ενέργεια";
+"panel::history" = "Ιστορικό";
+"panel::logbook" = "Δραστηριότητα";
+"panel::mailbox" = "Γραμματοκιβώτιο";
+"panel::map" = "Χάρτης";
+"panel::media_browser" = "Πολυμέσα";
+"panel::profile" = "Προφίλ";
+"panel::shopping_list" = "Λίστα για ψώνια";
+"panel::states" = "Επισκόπηση";
+"state::default::unavailable" = "Μη διαθέσιμο";
+"state::default::unknown" = "Άγνωστη";

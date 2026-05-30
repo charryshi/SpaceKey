@@ -1,0 +1,14 @@
+"panel::calendar" = "Koledar";
+"panel::config" = "Nastavitve";
+"panel::developer_tools" = "Orodja za razvijalce";
+"panel::energy" = "Energija";
+"panel::history" = "Zgodovina";
+"panel::logbook" = "Dejavnost";
+"panel::mailbox" = "Nabiralnik";
+"panel::map" = "Zemljevid";
+"panel::media_browser" = "Medijske vsebine";
+"panel::profile" = "Profil";
+"panel::shopping_list" = "Nakupovalni seznam";
+"panel::states" = "Pregled";
+"state::default::unavailable" = "Ni na voljo";
+"state::default::unknown" = "Neznano";

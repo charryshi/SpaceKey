@@ -1,0 +1,14 @@
+"panel::calendar" = "Kalender";
+"panel::config" = "Instellingen";
+"panel::developer_tools" = "Ontwikkelhulpmiddelen";
+"panel::energy" = "Energie";
+"panel::history" = "Geschiedenis";
+"panel::logbook" = "Activiteit";
+"panel::mailbox" = "Postvak";
+"panel::map" = "Kaart";
+"panel::media_browser" = "Media";
+"panel::profile" = "Profiel";
+"panel::shopping_list" = "Boodschappenlijst";
+"panel::states" = "Overzicht";
+"state::default::unavailable" = "Niet beschikbaar";
+"state::default::unknown" = "Onbekend";

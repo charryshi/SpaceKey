@@ -1,0 +1,14 @@
+"panel::calendar" = "Календар";
+"panel::config" = "Настройки";
+"panel::developer_tools" = "Инструменти за разработчици";
+"panel::energy" = "Енергия";
+"panel::history" = "История";
+"panel::logbook" = "Дейност";
+"panel::mailbox" = "Пощенска кутия";
+"panel::map" = "Карта";
+"panel::media_browser" = "Медии";
+"panel::profile" = "Профил";
+"panel::shopping_list" = "Списък за пазаруване";
+"panel::states" = "Общ преглед";
+"state::default::unavailable" = "Недостъпен";
+"state::default::unknown" = "Неизвестно";

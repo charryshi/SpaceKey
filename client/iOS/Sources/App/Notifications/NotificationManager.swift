@@ -1,0 +1,414 @@
+import CallbackURLKit
+import Communicator
+import FirebaseMessaging
+import Foundation
+import PromiseKit
+import Shared
+import SwiftUI
+import UserNotifications
+import XCGLogger
+
+class NotificationManager: NSObject, LocalPushManagerDelegate {
+    lazy var localPushManager: NotificationManagerLocalPushInterface = {
+        #if targetEnvironment(simulator)
+        return NotificationManagerLocalPushInterfaceDirect(delegate: self)
+        #else
+        if Current.isCatalyst {
+            return NotificationManagerLocalPushInterfaceDirect(delegate: self)
+        } else {
+            return NotificationManagerLocalPushInterfaceExtension()
+        }
+        #endif
+    }()
+
+    var commandManager = NotificationCommandManager()
+
+    override init() {
+        super.init()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(didBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+
+    func setupNotifications() {
+        Current.Log.verbose("Notifications disabled in permission gateway build")
+    }
+
+    @objc private func didBecomeActive() {
+        if Current.settingsStore.clearBadgeAutomatically {
+            UIApplication.shared.applicationIconBadgeNumber = 0
+        }
+    }
+
+    func resetPushID() -> Promise<String> {
+        guard !AppConstants.isPermissionGatewayBuild else {
+            Current.settingsStore.pushID = nil
+            return .value("")
+        }
+
+        return firstly {
+            Promise<Void> { seal in
+                Messaging.messaging().deleteToken(completion: seal.resolve)
+            }
+        }.then {
+            Promise<String> { seal in
+                Messaging.messaging().token(completion: seal.resolve)
+            }
+        }
+    }
+
+    func setupFirebase() {
+        guard !AppConstants.isPermissionGatewayBuild else {
+            Current.settingsStore.pushID = nil
+            Current.Log.verbose("Firebase Messaging disabled in permission gateway build")
+            return
+        }
+
+        Current.Log.verbose("Remote notifications disabled in permission gateway build")
+        Messaging.messaging().isAutoInitEnabled = false
+    }
+
+    func didFailToRegisterForRemoteNotifications(error: Error) {
+        guard !AppConstants.isPermissionGatewayBuild else { return }
+        Current.Log.error("failed to register for remote notifications: \(error)")
+    }
+
+    func didRegisterForRemoteNotifications(deviceToken: Data) {
+        guard !AppConstants.isPermissionGatewayBuild else { return }
+
+        let apnsToken = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        Current.Log.verbose("Successfully registered for push notifications! APNS token: \(apnsToken)")
+        Current.crashReporter.setUserProperty(value: apnsToken, name: "APNS Token")
+
+        var tokenType: MessagingAPNSTokenType = .prod
+
+        if Current.appConfiguration == .debug {
+            tokenType = .sandbox
+        }
+
+        Messaging.messaging().setAPNSToken(deviceToken, type: tokenType)
+    }
+
+    func didReceiveRemoteNotification(
+        userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        guard !AppConstants.isPermissionGatewayBuild else {
+            completionHandler(.noData)
+            return
+        }
+
+        Messaging.messaging().appDidReceiveMessage(userInfo)
+
+        firstly {
+            handleRemoteNotification(userInfo: userInfo)
+        }.done(
+            completionHandler
+        )
+    }
+
+    func localPushManager(
+        _ manager: LocalPushManager,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any]
+    ) {
+        guard !AppConstants.isPermissionGatewayBuild else { return }
+        handleRemoteNotification(userInfo: userInfo).cauterize()
+    }
+
+    private func handleRemoteNotification(userInfo: [AnyHashable: Any]) -> Guarantee<UIBackgroundFetchResult> {
+        guard !AppConstants.isPermissionGatewayBuild else {
+            return .value(.noData)
+        }
+
+        Current.Log.verbose("remote notification: \(userInfo)")
+
+        return commandManager.handle(userInfo).map {
+            UIBackgroundFetchResult.newData
+        }.recover { _ in
+            Guarantee<UIBackgroundFetchResult>.value(.failed)
+        }
+    }
+
+    fileprivate func handleShortcutNotification(
+        _ shortcutName: String,
+        _ shortcutDict: [String: String]
+    ) {
+        var inputParams: CallbackURLKit.Parameters = shortcutDict
+        inputParams["name"] = shortcutName
+
+        Current.Log.verbose("Sending params in shortcut \(inputParams)")
+
+        let eventName = "ios.shortcut_run"
+        let deviceDict: [String: String] = [
+            "sourceDevicePermanentID": AppConstants.PermanentID, "sourceDeviceName": UIDevice.current.name,
+            "sourceDeviceID": Current.settingsStore.deviceID,
+        ]
+        var eventData: [String: Any] = ["name": shortcutName, "input": shortcutDict, "device": deviceDict]
+
+        var successHandler: CallbackURLKit.SuccessCallback?
+
+        if shortcutDict["ignore_result"] == nil {
+            successHandler = { params in
+                Current.Log.verbose("Received params from shortcut run \(String(describing: params))")
+                eventData["status"] = "success"
+                eventData["result"] = params?["result"]
+
+                Current.Log.verbose("Success, sending data \(eventData)")
+
+                when(fulfilled: Current.apis.map { api in
+                    api.CreateEvent(eventType: eventName, eventData: eventData)
+                }).catch { error in
+                    Current.Log.error("Received error from createEvent during shortcut run \(error)")
+                }
+            }
+        }
+
+        let failureHandler: CallbackURLKit.FailureCallback = { error in
+            eventData["status"] = "failure"
+            eventData["error"] = error.XCUErrorParameters
+
+            when(fulfilled: Current.apis.map { api in
+                api.CreateEvent(eventType: eventName, eventData: eventData)
+            }).catch { error in
+                Current.Log.error("Received error from createEvent during shortcut run \(error)")
+            }
+        }
+
+        let cancelHandler: CallbackURLKit.CancelCallback = {
+            eventData["status"] = "cancelled"
+
+            when(fulfilled: Current.apis.map { api in
+                api.CreateEvent(eventType: eventName, eventData: eventData)
+            }).catch { error in
+                Current.Log.error("Received error from createEvent during shortcut run \(error)")
+            }
+        }
+
+        do {
+            try Manager.shared.perform(
+                action: "run-shortcut",
+                urlScheme: "shortcuts",
+                parameters: inputParams,
+                onSuccess: successHandler,
+                onFailure: failureHandler,
+                onCancel: cancelHandler
+            )
+        } catch let error as NSError {
+            Current.Log.error("Running shortcut failed \(error)")
+
+            eventData["status"] = "error"
+            eventData["error"] = error.localizedDescription
+
+            when(fulfilled: Current.apis.map { api in
+                api.CreateEvent(eventType: eventName, eventData: eventData)
+            }).catch { error in
+                Current.Log.error("Received error from CallbackURLKit perform \(error)")
+            }
+        }
+    }
+}
+
+extension NotificationManager: UNUserNotificationCenterDelegate {
+    private func urlString(from response: UNNotificationResponse) -> String? {
+        let content = response.notification.request.content
+        let urlValue = ["url", "uri", "clickAction"].compactMap { content.userInfo[$0] }.first
+
+        if let action = content.userInfoActionConfigs.first(
+            where: { $0.identifier.lowercased() == response.actionIdentifier.lowercased() }
+        ), let url = action.url {
+            // we only allow the action-specific one to override global if it's set
+            return url
+        } else if let openURLRaw = urlValue as? String {
+            // global url [string], always do it if we aren't picking a specific action
+            return openURLRaw
+        } else if let openURLDictionary = urlValue as? [String: String] {
+            // old-style, per-action url -- for before we could define actions in the notification dynamically
+            return openURLDictionary.compactMap { key, value -> String? in
+                if response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+                   key.lowercased() == NotificationCategory.FallbackActionIdentifier {
+                    return value
+                } else if key.lowercased() == response.actionIdentifier.lowercased() {
+                    return value
+                } else {
+                    return nil
+                }
+            }.first
+        } else {
+            return nil
+        }
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        guard !AppConstants.isPermissionGatewayBuild else {
+            completionHandler()
+            return
+        }
+
+        Messaging.messaging().appDidReceiveMessage(response.notification.request.content.userInfo)
+
+        guard response.actionIdentifier != UNNotificationDismissActionIdentifier else {
+            Current.Log.info("ignoring dismiss action for notification")
+            completionHandler()
+            return
+        }
+
+        let userInfo = response.notification.request.content.userInfo
+
+        Current.Log.verbose("User info in incoming notification \(userInfo) with response \(response)")
+
+        guard let server = Current.servers.server(for: response.notification.request.content) else {
+            Current.Log.info("ignoring push when unable to find server")
+            completionHandler()
+            return
+        }
+
+        if let shortcutDict = userInfo["shortcut"] as? [String: String],
+           let shortcutName = shortcutDict["name"] {
+            handleShortcutNotification(shortcutName, shortcutDict)
+        }
+
+        if let url = urlString(from: response) {
+            Current.Log.info("launching URL \(url)")
+            Current.sceneManager.webViewWindowControllerPromise.done {
+                $0.open(from: .notification, server: server, urlString: url, isComingFromAppIntent: false)
+            }
+        }
+
+        if let info = HomeAssistantAPI.PushActionInfo(response: response) {
+            Current.backgroundTask(withName: BackgroundTask.handlePushAction.rawValue) { _ in
+                Current.api(for: server)?
+                    .handlePushAction(for: info) ?? .init(error: HomeAssistantAPI.APIError.noAPIAvailable)
+            }.ensure {
+                completionHandler()
+            }.catch { err in
+                Current.Log.error("Error when handling push action: \(err)")
+            }
+        } else {
+            completionHandler()
+        }
+
+        if response.notification.request.identifier == NotificationIdentifier.carPlayIntro.rawValue {
+            Current.Log.info("Launching CarPlay configuration screen")
+            Current.sceneManager.webViewWindowControllerPromise.done {
+                let carPlayView = CarPlayConfigurationView().embeddedInHostingController()
+                $0.present(carPlayView)
+            }
+        }
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        guard !AppConstants.isPermissionGatewayBuild else {
+            completionHandler([])
+            return
+        }
+
+        Messaging.messaging().appDidReceiveMessage(notification.request.content.userInfo)
+
+        // Handle commands (including Live Activities) for foreground notifications.
+        // didReceiveRemoteNotification handles background pushes via Firebase/APNs,
+        // but willPresent fires when the app is in the foreground. Without this,
+        // notifications received while the app is open would never trigger the
+        // Live Activity handler.
+        // If a command is recognized, suppress the notification banner so the user
+        // sees only the Live Activity (not a duplicate standard notification).
+        if let hadict = notification.request.content.userInfo["homeassistant"] as? [String: Any],
+           (hadict["command"] as? String) != nil || (hadict["live_update"] as? Bool) == true {
+            commandManager.handle(notification.request.content.userInfo).done {
+                completionHandler([])
+            }.catch { error in
+                // Unknown command — fall through to normal banner presentation so the user isn't silently swallowed.
+                if case NotificationCommandManager.CommandError.unknownCommand = error {
+                    completionHandler([.badge, .sound, .list, .banner])
+                } else {
+                    completionHandler([])
+                }
+            }
+            return
+        }
+
+        if notification.request.content.userInfo[XCGLogger.notifyUserInfoKey] != nil,
+           UIApplication.shared.applicationState != .background {
+            completionHandler([])
+            return
+        }
+
+        var methods: UNNotificationPresentationOptions = [.badge, .sound, .list, .banner]
+        if let presentationOptions = notification.request.content.userInfo["presentation_options"] as? [String] {
+            methods = []
+            if presentationOptions.contains("sound") || notification.request.content.sound != nil {
+                methods.insert(.sound)
+            }
+            if presentationOptions.contains("badge") {
+                methods.insert(.badge)
+            }
+            if presentationOptions.contains("list") {
+                methods.insert(.list)
+            }
+            if presentationOptions.contains("banner") {
+                methods.insert(.banner)
+            }
+        }
+        return completionHandler(methods)
+    }
+
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        openSettingsFor notification: UNNotification?
+    ) {
+        guard !AppConstants.isPermissionGatewayBuild else { return }
+
+        let rootView = NavigationView {
+            NotificationSettingsView(showsDoneButton: true)
+        }
+        .navigationViewStyle(.stack)
+        let hostingController = rootView.embeddedInHostingController()
+
+        Current.sceneManager.webViewWindowControllerPromise.done {
+            var rootViewController = $0.window.rootViewController
+            if let navigationController = rootViewController as? UINavigationController {
+                rootViewController = navigationController.viewControllers.first
+            }
+            rootViewController?.dismiss(animated: false, completion: {
+                rootViewController?.present(hostingController, animated: true, completion: nil)
+            })
+        }
+    }
+}
+
+extension NotificationManager: MessagingDelegate {
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        guard !AppConstants.isPermissionGatewayBuild else {
+            Current.settingsStore.pushID = nil
+            return
+        }
+
+        let loggableCurrent = Current.settingsStore.pushID ?? "(null)"
+        let loggableNew = fcmToken ?? "(null)"
+
+        Current.Log.info("Firebase registration token refreshed, new token: \(loggableNew)")
+
+        if loggableCurrent != loggableNew {
+            Current.Log.warning("FCM token has changed from \(loggableCurrent) to \(loggableNew)")
+        }
+
+        Current.crashReporter.setUserProperty(value: fcmToken, name: "FCM Token")
+        Current.settingsStore.pushID = fcmToken
+
+        Current.backgroundTask(withName: BackgroundTask.notificationManagerDidReceiveRegistrationToken.rawValue) { _ in
+            when(fulfilled: Current.apis.map { api in
+                api.updateRegistration()
+            })
+        }.cauterize()
+    }
+}

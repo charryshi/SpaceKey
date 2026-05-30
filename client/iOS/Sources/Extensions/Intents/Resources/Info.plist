@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Intents</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<key>IntentsRestrictedWhileLocked</key>
+			<array/>
+			<key>IntentsRestrictedWhileProtectedDataUnavailable</key>
+			<array/>
+			<key>IntentsSupported</key>
+			<array>
+				<string>AssistInAppIntent</string>
+				<string>AssistIntent</string>
+				<string>CallServiceIntent</string>
+				<string>FireEventIntent</string>
+				<string>GetCameraImageIntent</string>
+				<string>INShareFocusStatusIntent</string>
+				<string>OpenPageIntent</string>
+				<string>PerformActionIntent</string>
+				<string>RenderTemplateIntent</string>
+				<string>ScriptAppIntent</string>
+				<string>SendLocationIntent</string>
+				<string>UpdateSensorsIntent</string>
+				<string>WidgetActionsIntent</string>
+				<string>WidgetOpenPageIntent</string>
+			</array>
+		</dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.intents-service</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).IntentHandler</string>
+	</dict>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We also need permission to access location &apos;Always&apos; so the App can perform background operations. \n Without that the App is unable to decide which connection (local or remote) to use in background and will prefer remote always.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs location access to connect directly to your Home Assistant installation. \n 1. Your location will only be used to check if you are connected to your local network. \n 2. It will not be shared with anyone. \n 3. If you do not allow this, the app will always connect over the internet instead. If not configured, it will protect your data and refuse the connection.</string>
+</dict>
+</plist>

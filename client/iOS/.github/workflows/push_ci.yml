@@ -1,0 +1,23 @@
+name: Push CI
+
+on:
+  pull_request:
+    paths:
+      - 'Sources/PushServer/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'Sources/PushServer/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: fwal/setup-swift@364295d9c23900ce04d4e5cc708387921b4e50f9  # v3
+        with:
+          swift-version: "5.8"
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Run Tests
+        run: swift test
+        working-directory: Sources/PushServer

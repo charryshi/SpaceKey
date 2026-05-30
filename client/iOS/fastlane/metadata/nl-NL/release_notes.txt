@@ -1,0 +1,12 @@
+Welkom bij Home Assistant Companion versie 2019.1, ook bekend als 2.0! Het is heel lang geleden, maar het is eindelijk zover. Hier zijn enkele van de nieuwe functies in deze release:
+
+- Gloednieuwe pushmeldingen-engine, aangedreven door Firebase, voor nog complexere meldingen dan ooit tevoren, inclusief kritieke meldingen en nog veel meer
+- Siri-snelkoppelingen: u kunt nu communiceren met uw Home Assistant via Siri en de Shortcuts-app
+- Apple Watch: bedien uw huis via de Apple Watch-app en controleer de status met Complicaties
+- Widget: snel acties activeren thuis via een widget. Ook beschikbaar via pictogram startscherm
+- Ondersteuning van Nabu Casa Cloud: Cloudhooks en externe gebruikersinterface zijn hier, zodat u (optioneel) nooit meer een poort in uw router kunt openen
+- Nieuwe verbindingsmotor: nu kunt u interne en externe URL's hebben voor totale aanpasbaarheid
+
+In plaats daarvan zijn er nog veel meer nieuwe functies en verbeteringen te ontdekken. Raadpleeg de forums en de nieuwe documentatie voor meer informatie.
+
+Bedankt voor het gebruik van Home Assistant Companion!

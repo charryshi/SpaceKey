@@ -1,0 +1,88 @@
+import AppIntents
+import Foundation
+import Shared
+import WidgetKit
+
+@available(iOSApplicationExtension 18, *)
+struct ControlScriptItem {
+    let intentScriptEntity: IntentScriptEntity
+    let icon: SFSymbolEntity
+    let showConfirmationNotification: Bool
+    let displayText: String?
+}
+
+@available(iOSApplicationExtension 18, *)
+struct ControlScriptsValueProvider: AppIntentControlValueProvider {
+    func currentValue(configuration: ControlScriptsConfiguration) async throws -> ControlScriptItem {
+        .init(
+            intentScriptEntity: configuration.script ?? placeholder(),
+            icon: configuration.icon ?? placeholderIcon(),
+            showConfirmationNotification: configuration.showConfirmationDialog,
+            displayText: configuration.displayText
+        )
+    }
+
+    func placeholder(for configuration: ControlScriptsConfiguration) -> ControlScriptItem {
+        .init(
+            intentScriptEntity: configuration.script ?? placeholder(),
+            icon: configuration.icon ?? placeholderIcon(),
+            showConfirmationNotification: configuration.showConfirmationDialog,
+            displayText: configuration.displayText
+        )
+    }
+
+    func previewValue(configuration: ControlScriptsConfiguration) -> ControlScriptItem {
+        .init(
+            intentScriptEntity: configuration.script ?? placeholder(),
+            icon: configuration.icon ?? placeholderIcon(),
+            showConfirmationNotification: configuration.showConfirmationDialog,
+            displayText: configuration.displayText
+        )
+    }
+
+    private func placeholder() -> IntentScriptEntity {
+        .init(
+            id: UUID().uuidString,
+            entityId: "",
+            serverId: "",
+            serverName: "",
+            displayString: L10n.Widgets.Controls.Scripts.pendingConfiguration,
+            iconName: "applescript.fill"
+        )
+    }
+
+    private func placeholderIcon() -> SFSymbolEntity {
+        .init(id: "applescript.fill")
+    }
+}
+
+@available(iOSApplicationExtension 18.0, *)
+struct ControlScriptsConfiguration: ControlConfigurationIntent {
+    static var title: LocalizedStringResource = .init("widgets.scripts.description", defaultValue: "Run Script")
+
+    @Parameter(
+        title: .init("app_intents.scripts.script.title", defaultValue: "Script")
+    )
+    var script: IntentScriptEntity?
+    @Parameter(
+        title: .init("app_intents.scripts.icon.title", defaultValue: "Icon")
+    )
+    var icon: SFSymbolEntity?
+
+    @Parameter(
+        title: LocalizedStringResource(
+            "app_intents.notify_when_run.title",
+            defaultValue: "Notify when run"
+        ),
+        description: LocalizedStringResource(
+            "app_intents.notify_when_run.description",
+            defaultValue: "Shows notification after executed"
+        ),
+        default: true
+    )
+    var showConfirmationDialog: Bool
+    @Parameter(
+        title: .init("app_intents.display_text.title", defaultValue: "Display Text")
+    )
+    var displayText: String?
+}

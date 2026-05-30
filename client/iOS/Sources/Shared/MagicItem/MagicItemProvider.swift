@@ -1,0 +1,301 @@
+import Foundation
+import GRDB
+import PromiseKit
+
+public protocol MagicItemProviderProtocol {
+    func loadInformation(completion: @escaping ([String: [HAAppEntity]]) -> Void)
+    func loadInformation() async -> [String: [HAAppEntity]]
+    func getInfo(for item: MagicItem) -> MagicItem.Info?
+    func getAreaName(for item: MagicItem) -> String?
+}
+
+final class MagicItemProvider: MagicItemProviderProtocol {
+    var entitiesPerServer: [String: [HAAppEntity]] = [:]
+
+    func loadInformation(completion: @escaping ([String: [HAAppEntity]]) -> Void) {
+        loadAppEntities { [weak self] in
+            guard let self else { return }
+            migrateWatchConfig(completion: {
+                self.migrateCarPlayConfig {
+                    self.migrateAppIconShortcutConfig {
+                        completion(self.entitiesPerServer)
+                    }
+                }
+            })
+        }
+    }
+
+    func loadInformation() async -> [String: [HAAppEntity]] {
+        await withCheckedContinuation { continuation in
+            loadAppEntities {
+                continuation.resume()
+            }
+        }
+        await withCheckedContinuation { continuation in
+            migrateWatchConfig {
+                continuation.resume()
+            }
+        }
+        await withCheckedContinuation { continuation in
+            migrateCarPlayConfig {
+                continuation.resume()
+            }
+        }
+        await withCheckedContinuation { continuation in
+            migrateAppIconShortcutConfig {
+                continuation.resume()
+            }
+        }
+        await withCheckedContinuation { continuation in
+            migrateWidgetsConfig {
+                continuation.resume()
+            }
+        }
+        return entitiesPerServer
+    }
+
+    func migrateCarPlayConfig(completion: @escaping () -> Void) {
+        guard var carPlayConfig = try? Current.carPlayConfig() else {
+            completion()
+            return
+        }
+        carPlayConfig.quickAccessItems = migrateItemsIfNeeded(items: carPlayConfig.quickAccessItems)
+        carPlayConfig.quickAccessItems = normalizeCarPlayItems(carPlayConfig.quickAccessItems)
+
+        do {
+            try Current.database().write { db in
+                try carPlayConfig.update(db)
+            }
+        } catch {
+            Current.Log.error("Failed to save migration CarPlay config, error: \(error.localizedDescription)")
+        }
+
+        completion()
+    }
+
+    func migrateWatchConfig(completion: @escaping () -> Void) {
+        guard var watchConfig = try? Current.watchConfig() else {
+            completion()
+            return
+        }
+        watchConfig.items = migrateItemsIfNeeded(items: watchConfig.items)
+
+        do {
+            try Current.database().write { db in
+                try watchConfig.update(db)
+            }
+        } catch {
+            Current.Log.error("Failed to save migration Watch config, error: \(error.localizedDescription)")
+        }
+
+        completion()
+    }
+
+    func migrateAppIconShortcutConfig(completion: @escaping () -> Void) {
+        guard var appIconShortcutConfig = try? Current.appIconShortcutConfig() else {
+            completion()
+            return
+        }
+        appIconShortcutConfig.items = migrateItemsIfNeeded(items: appIconShortcutConfig.items)
+
+        do {
+            try Current.database().write { db in
+                try appIconShortcutConfig.update(db)
+            }
+        } catch {
+            Current.Log
+                .error("Failed to save migration App Icon Shortcuts config, error: \(error.localizedDescription)")
+        }
+
+        completion()
+    }
+
+    /**
+     Migrates the configuration of custom widgets by updating their items if needed and saving the changes to the database.
+
+     - Parameter completion: A closure to be called after the migration process is complete, regardless of success or failure.
+
+     This function attempts to load all custom widgets from the database. For each widget, it updates its items using `migrateItemsIfNeeded(items:)`
+     and writes the updated widget back to the database. If an error occurs during loading or saving, it logs the error and continues processing.
+     The completion handler is always called at the end of the process.
+     */
+    func migrateWidgetsConfig(completion: @escaping () -> Void) {
+        guard let customWidgets = try? Current.customWidgets() else {
+            completion()
+            return
+        }
+        for customWidget in customWidgets {
+            var customWidget = customWidget
+            customWidget.items = migrateItemsIfNeeded(items: customWidget.items)
+
+            do {
+                try Current.database().write { db in
+                    try customWidget.update(db)
+                }
+            } catch {
+                Current.Log.error("Failed to save migration custom widgets, error: \(error.localizedDescription)")
+            }
+        }
+        completion()
+    }
+
+    private func loadAppEntities(completion: @escaping () -> Void) {
+        var serversCompletedFetchCount = 0
+        let servers = Current.servers.all
+        guard !servers.isEmpty else {
+            completion()
+            return
+        }
+        servers.forEach { [weak self] server in
+            do {
+                let entities: [HAAppEntity] = try Current.database().read { db in
+                    try HAAppEntity
+                        .filter(Column(DatabaseTables.AppEntity.serverId.rawValue) == server.identifier.rawValue)
+                        .fetchAll(db)
+                }
+                self?.entitiesPerServer[server.identifier.rawValue] = entities
+            } catch {
+                Current.Log.error("Failed to load covers from database: \(error.localizedDescription)")
+            }
+
+            serversCompletedFetchCount += 1
+            if serversCompletedFetchCount == servers.count {
+                completion()
+            }
+        }
+    }
+
+    func getInfo(for item: MagicItem) -> MagicItem.Info? {
+        switch item.type {
+        case .action:
+            guard let actionItem = Current.realm().object(ofType: Action.self, forPrimaryKey: item.id) else {
+                Current.Log
+                    .error(
+                        "Failed to get magic item Action info for item id: \(item.id), server id: \(String(describing: item.serverId))"
+                    )
+                return nil
+            }
+            return .init(
+                id: ServerEntity.uniqueId(serverId: actionItem.serverIdentifier, entityId: actionItem.ID),
+                name: actionItem.Text,
+                iconName: actionItem.IconName,
+                customization: .init(
+                    iconColor: actionItem.IconColor,
+                    textColor: actionItem.TextColor,
+                    backgroundColor: actionItem.BackgroundColor,
+                    // Legacy iOS Actions always run without confirmation as it previously did
+                    requiresConfirmation: false
+                )
+            )
+        case .script:
+            guard let scriptsForServer = entitiesPerServer[item.serverId]?
+                .filter({ $0.domain == Domain.script.rawValue }),
+                let scriptItem = scriptsForServer.first(where: { $0.entityId == item.id }) else {
+                Current.Log
+                    .error(
+                        "Failed to get magic item Script info for item id: \(item.id)"
+                    )
+                return nil
+            }
+
+            return .init(
+                id: scriptItem.id,
+                name: scriptItem.name,
+                iconName: scriptItem.icon ?? MaterialDesignIcons.scriptIcon.name,
+                customization: item.customization
+            )
+        case .scene:
+            guard let scenesForServer = entitiesPerServer[item.serverId]?
+                .filter({ $0.domain == Domain.scene.rawValue }),
+                let sceneItem = scenesForServer.first(where: { $0.entityId == item.id }) else {
+                Current.Log
+                    .error(
+                        "Failed to get magic item Script info for item id: \(item.id)"
+                    )
+                return nil
+            }
+
+            return .init(
+                id: sceneItem.id,
+                name: sceneItem.name,
+                iconName: sceneItem.icon ?? MaterialDesignIcons.paletteIcon.name,
+                customization: item.customization
+            )
+        case .entity:
+            guard let entitiesForServer = entitiesPerServer[item.serverId],
+                  let entityItem = entitiesForServer.first(where: { $0.entityId == item.id }) else {
+                Current.Log
+                    .error(
+                        "Failed to get magic item entity info for item id: \(item.id)"
+                    )
+                return nil
+            }
+
+            return .init(
+                id: entityItem.id,
+                name: entityItem.name,
+                iconName: entityItem.icon ??
+                    Domain(rawValue: entityItem.domain)?.icon(deviceClass: entityItem.rawDeviceClass).name ??
+                    MaterialDesignIcons.dotsGridIcon.name,
+                customization: item.customization
+            )
+        case .folder:
+            return .init(
+                id: item.serverUniqueId,
+                name: item.displayText ?? L10n.Watch.Configuration.Folder.defaultName,
+                iconName: MaterialDesignIcons.folderIcon.name,
+                customization: item.customization
+            )
+        case .assistPipeline, .assistPrompt:
+            let pipelineId = item.assistPipelineId ?? item.id
+            let pipelineName: String = {
+                let configs = (try? AssistPipelines.config()) ?? []
+                let pipeline = configs
+                    .first(where: { $0.serverId == item.serverId })?
+                    .pipelines
+                    .first(where: { $0.id == pipelineId })
+                return pipeline?.name ?? pipelineId
+            }()
+            let iconName = item.type == .assistPrompt ?
+                MaterialDesignIcons.messageProcessingOutlineIcon.name :
+                MaterialDesignIcons.microphoneIcon.name
+            return .init(
+                id: item.serverUniqueId,
+                name: pipelineName,
+                iconName: iconName,
+                customization: item.customization
+            )
+        }
+    }
+
+    func getAreaName(for item: MagicItem) -> String? {
+        guard item.type != .action,
+              let entitiesForServer = entitiesPerServer[item.serverId] else {
+            return nil
+        }
+
+        let areaName = entitiesForServer.areasMap(for: item.serverId)[item.id]?.name
+        if let areaName, !areaName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return areaName
+        }
+
+        return nil
+    }
+
+    private func normalizeCarPlayItems(_ items: [MagicItem]) -> [MagicItem] {
+        items.map { item in
+            guard item.type == .assistPipeline || item.type == .assistPrompt else { return item }
+
+            var item = item
+            var customization = item.customization ?? .init()
+
+            if customization.iconColor == nil {
+                customization.iconColor = MagicItem.defaultAssistIconColorHex
+            }
+            customization.requiresConfirmation = false
+
+            item.customization = customization
+            return item
+        }
+    }
+}

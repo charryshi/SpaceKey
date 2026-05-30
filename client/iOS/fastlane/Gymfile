@@ -1,0 +1,3 @@
+workspace "HomeAssistant.xcworkspace"
+clean true
+scheme "App-Release"

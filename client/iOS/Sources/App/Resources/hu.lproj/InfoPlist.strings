@@ -1,0 +1,17 @@
+"NFCReaderUsageDescription" = "Az NFC-címkék olvasása és írása lehetővé teszi események indítását.";
+"NSCameraUsageDescription" = "Készítsen fényképeket és küldje el őket a Home Assistant szerverére.";
+"NSCrossWebsiteTrackingUsageDescription" = "Opcionálisan engedélyezze a webhelyek közötti nyomon követést, ha a konfiguráció megköveteli.";
+"NSFocusStatusUsageDescription" = "Jelentse a fókusz állapotát érzékelőként.";
+"NSLocalNetworkUsageDescription" = "Keresse meg és kommunikáljon az Home Asisstant példányával.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "\n 🔵 Engedélyt kell kérnünk arra, hogy mindig hozzáférhessünk a helymeghatározáshoz, így az alkalmazás háttérben is tud műveleteket végezni. \n\n ⚠️ Enélkül az alkalmazás nem tudja eldönteni, hogy a helyi vagy a távoli kapcsolatot használja-e a háttérben, és mindig a távolit fogja használni.";
+"NSLocationAlwaysUsageDescription" = "Az olyan funkciókhoz, mint az iBeacons, a földrajzi kerítések, a háttérben történő helyfrissítések és a pontos jelentéskészítéshez mindig szükségünk van az Ön tartózkodási helyéhez való hozzáférésre.";
+"NSLocationUsageDescription" = "Ha engedélyezve van, az eszköz helyzete elküldésre kerül a Home Assistant szerverére eszközkövetőként.";
+"NSLocationWhenInUseUsageDescription" = "Ez az alkalmazás helyadatokhoz való hozzáférést igényel a Home Assistant telepítéséhez való közvetlen csatlakozáshoz. \n \n 1️⃣ Az Ön helyzete csak annak ellenőrzésére lesz használva, hogy csatlakozik-e a helyi hálózathoz.\n \n 2️⃣ Nem lesz megosztva senkivel.\n \n 3️⃣ Ha nem engedélyezi ezt, az alkalmazás mindig az interneten keresztül fog csatlakozni. Ha nincs konfigurálva, megvédi az adatait és megtagadja a kapcsolatot.";
+"NSMicrophoneUsageDescription" = "Hangfelvételt készíthet a Home Assistant kezelőfelületével.";
+"NSMotionUsageDescription" = "A mozgás a helyfrissítések javítására szolgál az aktuális mozgástípussal, valamint alapvető lépésszámláló adatokat szolgáltat.";
+"NSPhotoLibraryAddUsageDescription" = "A fényképek webes nézetből történő mentéséhez a Fotótár hozzáférése szükséges.";
+"NSPhotoLibraryUsageDescription" = "A fényképek webes nézetből történő mentéséhez a Fotótár hozzáférése szükséges.";
+"NSSiriUsageDescription" = "A Siri segítségével lehetővé tesszük a létrehozott parancsikonok használatát az alkalmazással való interakcióhoz.";
+"NSSpeechRecognitionUsageDescription" = "Szöveg diktálására szolgál az Asszisztens számára.";
+"SEND_LOCATION_APP_SHORTCUT_TITLE" = "Tartózkodási hely küldése";
+"TemporaryFullAccuracyReasonManualUpdate" = "Adja meg a teljes pontosságot, hogy az aktuális tartózkodási helyét használhassa a készülék nyomkövetőjéhez.";

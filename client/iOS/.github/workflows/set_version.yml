@@ -1,0 +1,37 @@
+name: "Version: Set Version"
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+        description: "New Version Number"
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ssh-key: ${{ secrets.HOMEASSISTANT_SSH_DEPLOY_KEY }}
+      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f  # v1.310.0
+        with:
+          ruby-version: '3.1'
+          bundler-cache: true
+      - run: "bundle exec fastlane set_version version:${{ github.event.inputs.version }}"
+      - name: Commit changes
+        id: commit
+        run: |
+          source Configuration/Version.xcconfig
+          git config --global user.name 'Home Assistant Bot'
+          git config --global user.email 'hello@home-assistant.io'
+          git add Configuration/Version.xcconfig
+          git commit -m "Bump Build to $MARKETING_VERSION ($CURRENT_PROJECT_VERSION)"
+          git clean -xfd
+          echo ::set-output name=pr_title::"$(git log -1 --pretty='%s')"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
+        with:
+          base: main
+          branch: create-pull-request/bump_build
+          title: ${{ steps.commit.outputs.pr_title }}
+          body: "Automatically created by ${{ github.actor }}."
+          token: ${{ secrets.REPO_SCOPED_TOKEN }}

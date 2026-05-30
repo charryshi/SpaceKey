@@ -1,0 +1,14 @@
+"panel::calendar" = "Календарь";
+"panel::config" = "Настройки";
+"panel::developer_tools" = "Панель разработчика";
+"panel::energy" = "Энергия";
+"panel::history" = "История";
+"panel::logbook" = "Активность";
+"panel::mailbox" = "Почтовый ящик";
+"panel::map" = "Карта";
+"panel::media_browser" = "Мультимедиа";
+"panel::profile" = "Профиль";
+"panel::shopping_list" = "Список покупок";
+"panel::states" = "Обзор";
+"state::default::unavailable" = "Недоступно";
+"state::default::unknown" = "Неизвестно";
