@@ -4,8 +4,6 @@ import Communicator
 #if DEBUG
 import DebugSwift
 #endif
-import FirebaseCore
-import FirebaseMessaging
 import Intents
 import KeychainAccess
 import MBProgressHUD
@@ -436,27 +434,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     private func setupFirebase() {
-        guard !AppConstants.isPermissionGatewayBuild else {
-            Current.settingsStore.pushID = nil
-            Current.Log.verbose("Firebase disabled in permission gateway build")
-            return
-        }
-
-        let optionsFile: String = {
-            switch Current.appConfiguration {
-            case .beta: return "GoogleService-Info-Beta"
-            case .debug, .fastlaneSnapshot: return "GoogleService-Info-Debug"
-            case .release: return "GoogleService-Info-Release"
-            }
-        }()
-        if let optionsPath = Bundle.main.path(forResource: optionsFile, ofType: "plist"),
-           let options = FirebaseOptions(contentsOfFile: optionsPath) {
-            FirebaseApp.configure(options: options)
-        } else {
-            fatalError("no firebase config found")
-        }
-
-        notificationManager.setupFirebase()
+        Current.settingsStore.pushID = nil
+        Current.Log.verbose("Firebase disabled in permission gateway build")
     }
 
     private func setupModels() {

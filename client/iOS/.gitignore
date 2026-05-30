@@ -79,6 +79,7 @@ dSYMs/
 
 # Local configuration overrides
 Configuration/HomeAssistant.overrides.xcconfig
+Sources/App/Resources/GoogleService-Info-*.plist
 
 *.profraw
 Brewfile.lock.json

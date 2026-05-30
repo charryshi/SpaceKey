@@ -201,6 +201,9 @@ bundle _2.2.2_ exec pod install --repo-update
 - `build/`
 - `DerivedData/`
 - `Configuration/HomeAssistant.overrides.xcconfig`
+- `Sources/App/Resources/GoogleService-Info-*.plist`
+
+SpaceKey iOS 已禁用 Firebase 和推送通知，不应提交 Firebase `GoogleService-Info-*.plist` 文件。
 
 ### 本地签名配置
 
@@ -495,6 +498,10 @@ Do not commit local generated files:
 - `build/`
 - `DerivedData/`
 - `Configuration/HomeAssistant.overrides.xcconfig`
+- `Sources/App/Resources/GoogleService-Info-*.plist`
+
+The SpaceKey iOS build disables Firebase and push notifications. Firebase `GoogleService-Info-*.plist`
+files are intentionally excluded from source control.
 
 ### Local Signing
 
