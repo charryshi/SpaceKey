@@ -1,0 +1,347 @@
+import { mdiMenu, mdiSwapHorizontal } from "@mdi/js";
+import type { PropertyValues } from "lit";
+import { LitElement, css, html } from "lit";
+import { customElement, query, state } from "lit/decorators";
+import { dynamicElement } from "../../src/common/dom/dynamic-element-directive";
+import { setDirectionStyles } from "../../src/common/util/compute_rtl";
+import "../../src/components/ha-button";
+import "../../src/components/ha-drawer";
+import type { HaDrawer } from "../../src/components/ha-drawer";
+import { HaExpansionPanel } from "../../src/components/ha-expansion-panel";
+import "../../src/components/ha-icon-button";
+import "../../src/components/ha-svg-icon";
+import "../../src/components/ha-top-app-bar-fixed";
+import "../../src/managers/notification-manager";
+import { haStyle } from "../../src/resources/styles";
+import { PAGES, SIDEBAR } from "../build/import-pages";
+import "./components/page-description";
+
+const RTL_STORAGE_KEY = "gallery-rtl";
+
+const GITHUB_DEMO_URL =
+  "https://github.com/home-assistant/frontend/blob/dev/gallery/src/pages/";
+
+const FAKE_HASS = {
+  // Just enough for computeRTL for notification-manager
+  language: "en",
+  translationMetadata: {
+    translations: {},
+  },
+};
+
+@customElement("ha-gallery")
+class HaGallery extends LitElement {
+  @state() private _page =
+    document.location.hash.substring(1) ||
+    `${SIDEBAR[0].category}/${SIDEBAR[0].pages![0]}`;
+
+  @state() private _rtl = localStorage.getItem(RTL_STORAGE_KEY) === "true";
+
+  @query("notification-manager")
+  private _notifications!: HTMLElementTagNameMap["notification-manager"];
+
+  @query("ha-drawer")
+  private _drawer!: HaDrawer;
+
+  private _narrow = window.matchMedia("(max-width: 600px)").matches;
+
+  render() {
+    const sidebar: unknown[] = [];
+
+    for (const group of SIDEBAR) {
+      const links: unknown[] = [];
+
+      for (const page of group.pages!) {
+        const key = `${group.category}/${page}`;
+        const active = this._page === key;
+        if (!(key in PAGES)) {
+          console.error("Undefined page referenced in sidebar.js:", key);
+          continue;
+        }
+        const title = PAGES[key].metadata.title || page;
+        links.push(html`
+          <a ?active=${active} href=${`#${group.category}/${page}`}>${title}</a>
+        `);
+      }
+
+      sidebar.push(
+        group.header
+          ? html`
+              <ha-expansion-panel .header=${group.header}>
+                ${links}
+              </ha-expansion-panel>
+            `
+          : links
+      );
+    }
+
+    return html`
+      <ha-drawer
+        .direction=${this._rtl ? "rtl" : "ltr"}
+        .open=${!this._narrow}
+        .type=${this._narrow ? "modal" : "dismissible"}
+      >
+        <div class="drawer-title">Home Assistant Design</div>
+        <div class="sidebar">${sidebar}</div>
+        <div slot="appContent" class="app-content">
+          <ha-top-app-bar-fixed>
+            <ha-icon-button
+              slot="navigationIcon"
+              @click=${this._menuTapped}
+              .path=${mdiMenu}
+            ></ha-icon-button>
+
+            <div slot="title">
+              ${PAGES[this._page].metadata.title || this._page.split("/")[1]}
+            </div>
+          </ha-top-app-bar-fixed>
+          <div class="content">
+            ${PAGES[this._page].description
+              ? html`
+                  <page-description .page=${this._page}></page-description>
+                `
+              : ""}
+            ${dynamicElement(`demo-${this._page.replace("/", "-")}`)}
+          </div>
+          <div class="page-footer">
+            <div class="edit-docs">
+              <div class="header">Help us to improve our documentation</div>
+              <div class="secondary">
+                Suggest an edit to this page, or provide/view feedback for this
+                page.
+              </div>
+              <div>
+                ${PAGES[this._page].description ||
+                Object.keys(PAGES[this._page].metadata).length > 0
+                  ? html`
+                      <a
+                        href=${`${GITHUB_DEMO_URL}${this._page}.markdown`}
+                        target="_blank"
+                      >
+                        Edit text
+                      </a>
+                    `
+                  : ""}
+                ${PAGES[this._page].demo
+                  ? html`
+                      <a
+                        href=${`${GITHUB_DEMO_URL}${this._page}.ts`}
+                        target="_blank"
+                      >
+                        Edit demo
+                      </a>
+                    `
+                  : ""}
+              </div>
+            </div>
+            <div class="rtl-toggle">
+              <ha-icon-button
+                @click=${this._toggleRtl}
+                .label=${this._rtl ? "Switch to LTR" : "Switch to RTL"}
+              >
+                <ha-svg-icon .path=${mdiSwapHorizontal}></ha-svg-icon>
+              </ha-icon-button>
+            </div>
+          </div>
+        </div>
+      </ha-drawer>
+      <notification-manager
+        .hass=${FAKE_HASS}
+        id="notifications"
+      ></notification-manager>
+    `;
+  }
+
+  firstUpdated(changedProps: PropertyValues<this>) {
+    super.firstUpdated(changedProps);
+
+    this._applyDirection();
+
+    this.addEventListener("show-notification", (ev) =>
+      this._notifications.showDialog({ message: ev.detail.message })
+    );
+    this.addEventListener("alert-dismissed-clicked", () =>
+      this._notifications.showDialog({ message: "Alert dismissed clicked" })
+    );
+    this.addEventListener("hass-more-info", (ev) => {
+      if (ev.detail.entityId) {
+        this._notifications.showDialog({
+          message: `Showing more info for ${ev.detail.entityId}`,
+        });
+      }
+    });
+
+    document.location.hash = this._page;
+
+    window.addEventListener("hashchange", () => {
+      this._page = document.location.hash.substring(1);
+      if (this._narrow) {
+        this._drawer.open = false;
+      }
+    });
+  }
+
+  updated(changedProps: PropertyValues) {
+    super.updated(changedProps);
+
+    if (changedProps.has("_rtl")) {
+      this._applyDirection();
+    }
+
+    if (!changedProps.has("_page")) {
+      return;
+    }
+
+    if (PAGES[this._page].demo) {
+      PAGES[this._page].demo();
+    }
+
+    const menuItem = this.shadowRoot!.querySelector(
+      `a[href="#${this._page}"]`
+    )!;
+
+    // Make sure section is expanded
+    if (menuItem.parentElement instanceof HaExpansionPanel) {
+      menuItem.parentElement.expanded = true;
+    }
+  }
+
+  private _menuTapped() {
+    this._drawer.open = !this._drawer.open;
+  }
+
+  private _toggleRtl() {
+    this._rtl = !this._rtl;
+    localStorage.setItem(RTL_STORAGE_KEY, String(this._rtl));
+  }
+
+  private _applyDirection() {
+    setDirectionStyles(this._rtl ? "rtl" : "ltr", this);
+  }
+
+  static styles = [
+    haStyle,
+    css`
+      :host {
+        -ms-user-select: initial;
+        -webkit-user-select: initial;
+        -moz-user-select: initial;
+        --ha-sidebar-width: 256px;
+        --header-height: 64px;
+      }
+
+      .sidebar {
+        box-sizing: border-box;
+        max-height: calc(100vh - var(--header-height));
+        overflow-y: auto;
+        padding: 4px;
+      }
+
+      .drawer-title {
+        align-items: center;
+        box-sizing: border-box;
+        color: var(--primary-text-color);
+        display: flex;
+        font-size: var(--ha-font-size-l);
+        font-weight: var(--ha-font-weight-medium);
+        min-height: var(--header-height);
+        padding: 0 16px;
+      }
+
+      .sidebar a {
+        color: var(--primary-text-color);
+        display: block;
+        padding: 12px;
+        text-decoration: none;
+        position: relative;
+      }
+
+      .sidebar a[active]::before {
+        border-radius: var(--ha-border-radius-lg);
+        position: absolute;
+        top: 0;
+        right: 2px;
+        bottom: 0;
+        left: 2px;
+        pointer-events: none;
+        content: "";
+        transition: opacity 15ms linear;
+        will-change: opacity;
+        background-color: var(--sidebar-selected-icon-color);
+        opacity: 0.12;
+      }
+
+      .app-content {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        background: var(--primary-background-color);
+      }
+
+      ha-drawer[type="dismissible"][open] ha-top-app-bar-fixed {
+        --ha-top-app-bar-width: calc(100% - var(--ha-sidebar-width));
+      }
+
+      .content {
+        flex: 1;
+      }
+
+      page-description {
+        margin: 16px;
+      }
+
+      .page-footer {
+        display: flex;
+        border-radius: var(--ha-border-radius-lg);
+        background-color: var(--primary-background-color);
+      }
+
+      .edit-docs {
+        flex: 1;
+        text-align: center;
+        margin: 16px;
+        padding: 16px;
+      }
+
+      .page-footer div {
+        margin-top: 4px;
+      }
+
+      .page-footer .header {
+        font-size: var(--ha-font-size-l);
+        font-weight: var(--ha-font-weight-medium);
+        line-height: var(--ha-line-height-normal);
+        text-align: center;
+      }
+
+      .page-footer .secondary {
+        line-height: var(--ha-line-height-normal);
+        text-align: center;
+      }
+
+      .page-footer a {
+        display: inline-block;
+        margin: 0 8px;
+        text-decoration: none;
+      }
+
+      .rtl-toggle {
+        padding: var(--ha-space-4);
+        display: inline-flex;
+        align-items: flex-end;
+        margin-top: 12px !important;
+      }
+
+      .rtl-toggle ha-icon-button {
+        border: 1px solid var(--divider-color);
+        border-radius: var(--ha-border-radius-pill);
+      }
+    `,
+  ];
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "ha-gallery": HaGallery;
+  }
+}

@@ -1,0 +1,87 @@
+import { provide } from "@lit/context";
+import type { PropertyValues, TemplateResult } from "lit";
+import { css, html, LitElement } from "lit";
+import { customElement, state } from "lit/decorators";
+import { applyThemesOnElement } from "../../../../src/common/dom/apply_themes_on_element";
+import "../../../../src/components/ha-card";
+import "../../../../src/components/ha-tip";
+import { internationalizationContext } from "../../../../src/data/context";
+import type { HomeAssistantInternationalization } from "../../../../src/types";
+
+const tips: (string | TemplateResult)[] = [
+  "Test tip",
+  "Bigger test tip, with some random text just to fill up as much space as possible without it looking like I'm really trying to to that",
+  html`<i>Tip</i> <b>with</b> <sub>HTML</sub>`,
+];
+
+@customElement("demo-components-ha-tip")
+export class DemoHaTip extends LitElement {
+  @provide({ context: internationalizationContext })
+  @state()
+  protected _i18n: HomeAssistantInternationalization = {
+    localize: ((key: string) => key) as any,
+    language: "en",
+    selectedLanguage: null,
+    locale: {} as any,
+    translationMetadata: {} as any,
+    loadBackendTranslation: (async () => (key: string) => key) as any,
+    loadFragmentTranslation: (async () => (key: string) => key) as any,
+  };
+
+  protected render(): TemplateResult {
+    return html` ${["light", "dark"].map(
+      (mode) => html`
+        <div class=${mode}>
+          <ha-card header="ha-tip ${mode} demo">
+            <div class="card-content">
+              ${tips.map((tip) => html`<ha-tip>${tip}</ha-tip>`)}
+            </div>
+          </ha-card>
+        </div>
+      `
+    )}`;
+  }
+
+  firstUpdated(changedProps: PropertyValues<this>) {
+    super.firstUpdated(changedProps);
+    applyThemesOnElement(
+      this.shadowRoot!.querySelector(".dark"),
+      {
+        default_theme: "default",
+        default_dark_theme: "default",
+        themes: {},
+        darkMode: true,
+        theme: "default",
+      },
+      undefined,
+      undefined,
+      true
+    );
+  }
+
+  static styles = css`
+    :host {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+    }
+    .dark,
+    .light {
+      display: block;
+      background-color: var(--primary-background-color);
+      padding: 0 50px;
+    }
+    ha-tip {
+      margin-bottom: 14px;
+    }
+    ha-card {
+      margin: 24px auto;
+    }
+  `;
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "demo-components-ha-tip": DemoHaTip;
+  }
+}
