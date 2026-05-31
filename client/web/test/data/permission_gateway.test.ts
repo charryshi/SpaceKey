@@ -38,6 +38,7 @@ const translations: Record<string, string> = {
   "ui.panel.lovelace.strategy.areas.groups.climate": "Climate",
   "ui.panel.lovelace.strategy.areas.groups.media_players": "Media players",
   "ui.panel.lovelace.strategy.areas.groups.security": "Security",
+  "ui.panel.lovelace.strategy.areas.groups.actions": "Actions",
   "ui.panel.lovelace.strategy.areas.sensors": "Sensors",
   "ui.panel.lovelace.strategy.areas.groups.others": "Others",
   "component.cover.title": "Covers",
@@ -606,6 +607,56 @@ describe("permission gateway frontend filters", () => {
       )
     ).toEqual(["灯", "窗帘"]);
     expect(localizePanelTitle(localize, "zh-Hans", "light")).toBe("灯");
+  });
+
+  it("lists authorized scenes in the actions group", () => {
+    const config = createPermissionGatewayLovelaceConfig(
+      {
+        "scene.movie": {
+          entity_id: "scene.movie",
+          state: "2026-05-31T10:00:00+00:00",
+          attributes: { friendly_name: "Movie" },
+        } as any,
+        "light.ceiling": {
+          entity_id: "light.ceiling",
+          attributes: { supported_color_modes: ["onoff"] },
+        } as any,
+      },
+      {
+        ...summary,
+        entity_ids: ["scene.movie", "light.ceiling"],
+      },
+      localize,
+      "en"
+    );
+
+    expect(config?.views[0].sections).toMatchObject([
+      {
+        cards: [
+          {
+            type: "heading",
+            heading: "Lights",
+          },
+          {
+            type: "tile",
+            entity: "light.ceiling",
+          },
+        ],
+      },
+      {
+        cards: [
+          {
+            type: "heading",
+            heading: "Actions",
+            icon: "mdi:robot",
+          },
+          {
+            type: "tile",
+            entity: "scene.movie",
+          },
+        ],
+      },
+    ]);
   });
 
   it("accepts gateway permission aliases", () => {

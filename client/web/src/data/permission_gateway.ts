@@ -603,6 +603,7 @@ const GROUP_ORDER = [
   "valve",
   "media_player",
   "security",
+  "actions",
   "sensor",
   "other",
 ];
@@ -686,6 +687,12 @@ const GROUP_META: Record<
       "panel.security",
     ],
   },
+  actions: {
+    title: "Actions",
+    zhTitle: "操作",
+    icon: "mdi:robot",
+    translationKeys: ["ui.panel.lovelace.strategy.areas.groups.actions"],
+  },
   sensor: {
     title: "Sensors",
     zhTitle: "传感器",
@@ -711,6 +718,9 @@ const getEntityGroupKey = (entityId: string) => {
   const domain = computeDomain(entityId);
   if (domain === "lock" || domain === "alarm_control_panel") {
     return "security";
+  }
+  if (domain === "scene" || domain === "script" || domain === "automation") {
+    return "actions";
   }
   if (GROUP_ORDER.includes(domain)) {
     return domain;
