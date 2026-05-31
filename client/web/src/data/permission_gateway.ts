@@ -904,10 +904,23 @@ interface PermissionGatewayGroupControl {
 
 const getPermissionGatewayGroupControl = (
   groupKey: string,
-  localize: LocalizeFunc | undefined
+  localize: LocalizeFunc | undefined,
+  language: string | undefined
 ): PermissionGatewayGroupControl | undefined => {
-  const allOnText = localize?.("ui.card.toggle-group.all_on") || "全开";
-  const allOffText = localize?.("ui.card.toggle-group.all_off") || "全关";
+  const allOnText = getPermissionGatewayControlLabel(
+    "ui.card.toggle-group.all_on",
+    language,
+    "全开",
+    "All on",
+    localize
+  );
+  const allOffText = getPermissionGatewayControlLabel(
+    "ui.card.toggle-group.all_off",
+    language,
+    "全关",
+    "All off",
+    localize
+  );
 
   switch (groupKey) {
     case "light":
@@ -925,14 +938,33 @@ const getPermissionGatewayGroupControl = (
   }
 };
 
+const getPermissionGatewayControlLabel = (
+  key: LocalizeKeys,
+  language: string | undefined,
+  zhFallback: string,
+  fallback: string,
+  localize: LocalizeFunc | undefined
+) => {
+  if (isChineseLanguage(language)) {
+    return zhFallback;
+  }
+  const translated = localize?.(key);
+  return translated && translated !== key ? translated : fallback;
+};
+
 const createPermissionGatewayGroupControlBadges = (
   group: PermissionGatewayEntityGroup,
-  localize: LocalizeFunc | undefined
+  localize: LocalizeFunc | undefined,
+  language: string | undefined
 ) => {
   if (group.entityIds.length < 2) {
     return undefined;
   }
-  const control = getPermissionGatewayGroupControl(group.key, localize);
+  const control = getPermissionGatewayGroupControl(
+    group.key,
+    localize,
+    language
+  );
   if (!control) {
     return undefined;
   }
@@ -985,14 +1017,19 @@ const createPermissionGatewayGroupControlBadges = (
 const createPermissionGatewayGroupCards = (
   group: PermissionGatewayEntityGroup,
   states: HassEntities,
-  localize: LocalizeFunc | undefined
+  localize: LocalizeFunc | undefined,
+  language: string | undefined
 ): LovelaceCardConfig[] => {
   const cards: LovelaceCardConfig[] = [
     {
       type: "heading",
       heading: group.title,
       icon: group.icon,
-      badges: createPermissionGatewayGroupControlBadges(group, localize),
+      badges: createPermissionGatewayGroupControlBadges(
+        group,
+        localize,
+        language
+      ),
     },
   ];
 
@@ -1033,7 +1070,8 @@ export const createPermissionGatewayLovelaceConfig = (
           cards: createPermissionGatewayGroupCards(
             group,
             filteredStates,
-            localize
+            localize,
+            language
           ),
         })),
       },

@@ -581,6 +581,42 @@ describe("permission gateway frontend filters", () => {
     );
   });
 
+  it("uses localized light group control labels", () => {
+    const config = createPermissionGatewayLovelaceConfig(
+      {
+        "light.ceiling": {
+          entity_id: "light.ceiling",
+          attributes: { supported_color_modes: ["onoff"] },
+        } as any,
+        "light.wall": {
+          entity_id: "light.wall",
+          attributes: { supported_color_modes: ["onoff"] },
+        } as any,
+      },
+      {
+        ...summary,
+        entity_ids: ["light.ceiling", "light.wall"],
+      },
+      (key) => key,
+      "zh-Hans"
+    );
+
+    expect((config?.views[0].sections?.[0].cards as any[])[0]).toMatchObject({
+      type: "heading",
+      heading: "灯",
+      badges: [
+        {
+          type: "button",
+          text: "全开",
+        },
+        {
+          type: "button",
+          text: "全关",
+        },
+      ],
+    });
+  });
+
   it("uses Chinese fallback titles when the bundled panel translations are English", () => {
     const config = createPermissionGatewayLovelaceConfig(
       {
